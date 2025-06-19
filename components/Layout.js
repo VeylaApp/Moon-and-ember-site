@@ -13,34 +13,31 @@
 // Auth protection (gating) will be added to all except Login
 // Placeholder text and navigation scaffolding will be included
 
-export default function AppStructure() {
+import Link from 'next/link';
+
+export default function Layout({ children }) {
   return (
     <div className="min-h-screen bg-black text-white">
-      <header className="p-4 border-b border-gray-800">
-        <nav className="flex justify-between items-center">
+      {/* Fixed Top Nav */}
+      <header className="fixed top-0 left-0 w-full bg-black z-50 border-b border-gray-800">
+        <nav className="max-w-7xl mx-auto p-4 flex justify-between items-center">
           <h1 className="text-xl font-bold">🌙 Moon & Ember</h1>
           <ul className="flex gap-4">
-            <li><a href="/">Home</a></li>
-            <li><a href="/grimoire">Grimoire</a></li>
-            <li><a href="/coven">Coven</a></li>
-            <li><a href="/blog">Blog</a></li>
-            <li><a href="/about">About</a></li>
-            <li><a href="/contact">Contact</a></li>
+            <li><Link href="/">Home</Link></li>
+            <li><Link href="/grimoire">Grimoire</Link></li>
+            <li><Link href="/coven">Coven</Link></li>
+            <li><Link href="/blog">Blog</Link></li>
+            <li><Link href="/about">About</Link></li>
+            <li><Link href="/contact">Contact</Link></li>
           </ul>
         </nav>
       </header>
-      <main className="p-8">
-        {/* Route-based content will render here */}
+
+      {/* Push content down so it’s not hidden behind fixed nav */}
+      <main className="pt-24 px-4 pb-10">
+        {children}
       </main>
     </div>
   );
 }
 
-// Pages will live in /pages folder per Next.js convention:
-// /pages/index.tsx → Home
-// /pages/login.tsx → Login
-// /pages/coven.tsx → Forum placeholder
-// /pages/grimoire.tsx → Grimoire system
-// /pages/blog.tsx → Posts
-// /pages/about.tsx → Site/about info
-// /pages/contact.tsx → Email/donation/social links
