@@ -18,11 +18,10 @@ import Link from 'next/link';
 export default function Layout({ children }) {
   return (
     <div className="min-h-screen bg-black text-white">
-      {/* Fixed Top Nav */}
+      {/* Centered Horizontal Navigation */}
       <header className="fixed top-0 left-0 w-full bg-black z-50 border-b border-gray-800">
-        <nav className="max-w-7xl mx-auto p-4 flex justify-between items-center">
-          <h1 className="text-xl font-bold">🌙 Moon & Ember</h1>
-          <ul className="flex gap-4">
+        <nav className="max-w-screen-xl mx-auto px-4 py-4">
+          <ul className="flex justify-center space-x-10 text-lg font-semibold">
             <li><Link href="/">Home</Link></li>
             <li><Link href="/grimoire">Grimoire</Link></li>
             <li><Link href="/coven">Coven</Link></li>
@@ -33,11 +32,10 @@ export default function Layout({ children }) {
         </nav>
       </header>
 
-      {/* Push content down so it’s not hidden behind fixed nav */}
+      {/* Content area below fixed nav */}
       <main className="pt-24 px-4 pb-10">
         {children}
       </main>
     </div>
   );
 }
-
