@@ -18,22 +18,25 @@ import Link from 'next/link';
 export default function Layout({ children }) {
   return (
     <div className="min-h-screen bg-black text-white">
-      {/* Centered Horizontal Navigation */}
+      {/* Fixed horizontal nav bar */}
       <header className="fixed top-0 left-0 w-full bg-black z-50 border-b border-gray-800">
-        <nav className="max-w-screen-xl mx-auto px-4 py-4">
-          <ul className="flex justify-center space-x-10 text-lg font-semibold">
-            <li><Link href="/">Home</Link></li>
-            <li><Link href="/grimoire">Grimoire</Link></li>
-            <li><Link href="/coven">Coven</Link></li>
-            <li><Link href="/blog">Blog</Link></li>
-            <li><Link href="/about">About</Link></li>
-            <li><Link href="/contact">Contact</Link></li>
-          </ul>
+        <nav className="max-w-7xl mx-auto px-4 py-4">
+          <div className="flex justify-between items-center">
+            <div className="hidden md:block"></div> {/* spacer */}
+            <ul className="flex justify-center w-full gap-12 list-none text-lg font-semibold">
+              <li><Link href="/">Home</Link></li>
+              <li><Link href="/grimoire">Grimoire</Link></li>
+              <li><Link href="/coven">Coven</Link></li>
+              <li><Link href="/blog">Blog</Link></li>
+              <li><Link href="/about">About</Link></li>
+              <li><Link href="/contact">Contact</Link></li>
+            </ul>
+            <div className="hidden md:block"></div> {/* spacer */}
+          </div>
         </nav>
       </header>
 
-      {/* Content area below fixed nav */}
-      <main className="pt-24 px-4 pb-10">
+      <main className="pt-28 px-4 pb-10">
         {children}
       </main>
     </div>
