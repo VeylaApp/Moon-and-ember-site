@@ -1,0 +1,16 @@
+name: Daily Astro Data Cron
+
+on:
+  schedule:
+    - cron: '0 0 * * *'   # Runs every day at 00:00 UTC
+  workflow_dispatch:      # Allow manual trigger of this workflow (optional for testing)
+
+jobs:
+  run-astro-cron:
+    runs-on: ubuntu-latest
+    steps:
+      # We don't need to checkout code for a simple API call.
+      - name: Call /api/saveDailyAstro endpoint
+        run: |
+          curl -sSf "${{ secrets.VERCEL_PROD_URL }}/api/saveDailyAstro" \
+               -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
