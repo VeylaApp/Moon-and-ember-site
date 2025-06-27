@@ -1,6 +1,15 @@
-import supabase from '@/lib/supabase'; // ✅ use shared instance;
+import supabase from '@/lib/supabase';
 
 const delay = (ms) => new Promise((res) => setTimeout(res, ms));
+
+/**
+ * Converts a Date object to 'YYYY-MM-DD' using the machine's local timezone
+ */
+function formatLocalDate(date) {
+  const local = new Date(date);
+  local.setMinutes(local.getMinutes() - local.getTimezoneOffset());
+  return local.toISOString().split('T')[0];
+}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -29,6 +38,8 @@ export default async function handler(req, res) {
     current <= end && successCount < limit;
     current.setDate(current.getDate() + 1)
   ) {
+    const formattedDate = formatLocalDate(current); // ✅ use local date
+
     const year = current.getFullYear();
     const month = current.getMonth() + 1;
     const date = current.getDate();
@@ -63,13 +74,13 @@ export default async function handler(req, res) {
       const data = await apiRes.json();
 
       if (!apiRes.ok) {
-        results.push({ date: current.toISOString().split('T')[0], error: data });
+        results.push({ date: formattedDate, error: data });
         failCount++;
         continue;
       }
 
       const formattedData = {
-        date: current.toISOString().split('T')[0],
+        date: formattedDate,
         output: (data.output || []).map((item) => ({
           name: item.planet?.en || 'Unknown',
           fullDegree: item.fullDegree,
@@ -85,18 +96,18 @@ export default async function handler(req, res) {
         .upsert([formattedData], { onConflict: ['date'] });
 
       if (error) {
-        results.push({ date: formattedData.date, error });
+        results.push({ date: formattedDate, error });
         failCount++;
       } else {
-        results.push({ date: formattedData.date, status: 'saved' });
+        results.push({ date: formattedDate, status: 'saved' });
         successCount++;
       }
     } catch (err) {
-      results.push({ date: current.toISOString().split('T')[0], error: err.message });
+      results.push({ date: formattedDate, error: err.message });
       failCount++;
     }
 
-    await delay(1000); // Wait 1s to avoid exceeding rate limits
+    await delay(1000);
   }
 
   return res.status(200).json({

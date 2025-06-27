@@ -69,7 +69,7 @@ export default function EnergyOfDayWidget() {
   const moon = planets.find((p) => p.name === 'Moon');
 
   return (
-    <div className="bg-midnight/50 text-white p-4 rounded-lg shadow-md border border-white/10">
+    <div className="bg-forest/40 rounded-xl shadow-lg p-6 text-center text-white border border-white/20 backdrop-blur">
       <h3 className="text-xl font-header text-orange-ember mb-2">🌟 Energies of the Day 🌟</h3>
 
       <p>☀️ Sun: <strong>{getZodiacWithEmoji(sun?.zodiac)}</strong></p>

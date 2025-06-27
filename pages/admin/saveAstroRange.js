@@ -1,6 +1,9 @@
+// pages/admin/saveAstroRange.js
 import { useState } from 'react';
+import AdminLayout from '@/components/AdminLayout';
+import withAdminAuth from '@/lib/withAdminAuth';
 
-export default function ManualSaveAstroRange() {
+function ManualSaveAstroRange() {
   const [start, setStart] = useState('');
   const [end, setEnd] = useState('');
   const [result, setResult] = useState(null);
@@ -71,3 +74,10 @@ export default function ManualSaveAstroRange() {
     </div>
   );
 }
+
+// ✅ Wrap with admin auth and layout
+ManualSaveAstroRange.getLayout = function getLayout(page) {
+  return <AdminLayout>{page}</AdminLayout>;
+};
+
+export default withAdminAuth(ManualSaveAstroRange);

@@ -44,7 +44,7 @@ export default function LatestBlogPost() {
   if (!post) return <p className="text-ash-light text-center">🚫 No blog posts yet – stay tuned!</p>;
 
   return (
-    <div className="bg-forest/50 p-4 rounded-lg shadow-md border border-white/10 text-white">
+    <div className="bg-forest/40 rounded-xl shadow-lg p-6 text-center text-white border border-white/20 backdrop-blur">
       <h3 className="text-xl font-header text-orange-ember mb-2">📝 Latest Blog Post 📝</h3>
       <h4 className="text-xl font-header text-white mb-1">{post.title}</h4>
       <p className="text-sm text-orange-ember italic mb-2">
