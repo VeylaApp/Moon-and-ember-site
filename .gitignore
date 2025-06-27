@@ -1,0 +1,25 @@
+# dependencies
+node_modules/
+
+# build output
+.next/
+out/
+.turbo/
+
+# production
+.env
+.env.local
+.env.*.local
+
+# misc
+.DS_Store
+.vscode/
+*.log
+
+# system
+Thumbs.db
+ehthumbs.db
+
+# IDEs
+*.swp
+.idea/
