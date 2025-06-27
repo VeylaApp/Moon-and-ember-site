@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { supabase } from '../utils/supabaseClient';
+import  supabase  from '@/lib/supabase';
 import { useRouter } from 'next/router';
 
 export default function Logout() {
