@@ -1,6 +1,6 @@
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
-import Layout from '@/components/Layout'; // ✅ Wrap with your site's layout
+import Layout from '@/components/Layout';
 
 export default function BlogPostPage() {
   const router = useRouter();
@@ -13,9 +13,9 @@ export default function BlogPostPage() {
     if (!slug) return;
 
     async function fetchPost() {
-      const url = `https://bohmreonbrxneehnqvku.supabase.co/rest/v1/blog_posts?slug=eq.${slug}&select=*`;
+      const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/blog_posts?slug=eq.${slug}&select=*`;
 
-    try {
+      try {
         const res = await fetch(url, {
           headers: {
             apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
@@ -52,7 +52,9 @@ export default function BlogPostPage() {
               />
             )}
 
-            <h1 className="text-4xl font-header font-bold text-orange-ember mb-2">{post.title}</h1>
+            <h1 className="text-4xl font-header font-bold text-orange-ember mb-2">
+              {post.title}
+            </h1>
 
             <p className="text-sm text-ash-light italic mb-4">
               {post.published_at
@@ -60,6 +62,7 @@ export default function BlogPostPage() {
                 : 'Unknown date'}
             </p>
 
+            {/* ✅ Render formatted HTML content */}
             <div
               className="prose prose-invert max-w-none"
               dangerouslySetInnerHTML={{ __html: post.content }}

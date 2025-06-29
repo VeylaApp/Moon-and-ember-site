@@ -17,6 +17,7 @@ export default function AdminLayout({ children }) {
            <button onClick={() => router.push('/admin/viewAllCards')} className="block w-full text-left hover:underline">View All Grimoire Entries</button>
            <button onClick={() => router.push('/admin/saveAstroRange')} className="block w-full text-left hover:underline">API Call and Save by Date Range</button>
             <button onClick={() => router.push('/admin/viewAstroByDate')} className="block w-full text-left hover:underline">View API data by Date</button>
+            <button onClick={() => router.push('https://forum.moonandembers.com/admin')} className="block w-full text-left hover:underline">Forum Admin</button>
         </nav>
       </div>
 

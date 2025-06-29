@@ -1,6 +1,16 @@
 import { useState } from 'react';
+import dynamic from 'next/dynamic';
 import withAdminAuth from '@/lib/withAdminAuth';
 import AdminLayout from '@/components/AdminLayout';
+import { createClient } from '@supabase/supabase-js';
+import 'react-quill/dist/quill.snow.css';
+
+const ReactQuill = dynamic(() => import('react-quill'), { ssr: false });
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
 
 function BlogAdmin() {
   const [form, setForm] = useState({
@@ -29,25 +39,25 @@ function BlogAdmin() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    let coverImagePath = '';
+    let coverImagePath = '/images/logo.jpg'; // default
 
     if (file) {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('filename', `${Date.now()}-${file.name}`);
+      const fileName = `${Date.now()}-${file.name}`;
+      const filePath = `blog/${fileName}`;
 
-      const uploadRes = await fetch('/api/upload-image', {
-        method: 'POST',
-        body: formData,
-      });
+      const { error: uploadError } = await supabase.storage
+        .from('images')
+        .upload(filePath, file, {
+          contentType: file.type,
+        });
 
-      const uploadData = await uploadRes.json();
-      if (!uploadRes.ok) {
-        setMessage(`❌ Upload failed: ${uploadData.error}`);
+      if (uploadError) {
+        setMessage(`❌ Upload failed: ${uploadError.message}`);
         return;
       }
 
-      coverImagePath = uploadData.path;
+      const { data } = supabase.storage.from('images').getPublicUrl(filePath);
+      coverImagePath = data.publicUrl;
     }
 
     const cleanedForm = {
@@ -56,7 +66,7 @@ function BlogAdmin() {
       cover_image_url: coverImagePath
     };
 
-    const res = await fetch('https://bohmreonbrxneehnqvku.supabase.co/rest/v1/blog_posts', {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/blog_posts`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -95,7 +105,15 @@ function BlogAdmin() {
           <input type="text" name="title" value={form.title} onChange={handleChange} placeholder="Title" required className="w-full p-2 rounded bg-slate-800 text-white" />
           <input type="text" name="slug" value={form.slug} onChange={handleChange} placeholder="Slug" required className="w-full p-2 rounded bg-slate-800 text-white" />
           <input type="text" name="excerpt" value={form.excerpt} onChange={handleChange} placeholder="Excerpt" className="w-full p-2 rounded bg-slate-800 text-white" />
-          <textarea name="content" value={form.content} onChange={handleChange} placeholder="Write your post here..." rows={10} className="w-full p-2 rounded bg-slate-800 text-white"></textarea>
+          
+          {/* 🖋 Rich Text Editor */}
+          <ReactQuill
+            value={form.content}
+            onChange={(value) => setForm((prev) => ({ ...prev, content: value }))}
+            className="bg-white text-black rounded"
+            theme="snow"
+          />
+
           <input type="text" name="tags" value={form.tags} onChange={handleChange} placeholder="Tags (comma-separated)" className="w-full p-2 rounded bg-slate-800 text-white" />
           <input type="date" name="published_at" value={form.published_at} onChange={handleChange} className="w-full p-2 rounded bg-slate-800 text-white" />
           <select name="status" value={form.status} onChange={handleChange} className="w-full p-2 rounded bg-slate-800 text-white">
@@ -111,5 +129,3 @@ function BlogAdmin() {
 }
 
 export default withAdminAuth(BlogAdmin);
-
-

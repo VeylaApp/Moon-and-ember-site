@@ -9,8 +9,7 @@ export default function BlogIndexPage() {
   useEffect(() => {
     async function fetchPosts() {
       const today = new Date().toISOString();
-
-      const url = `https://bohmreonbrxneehnqvku.supabase.co/rest/v1/blog_posts?select=*&status=eq.published&published_at=lte.${today}&order=published_at.desc.nullslast`;
+      const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/blog_posts?select=*&status=eq.published&published_at=lte.${today}&order=published_at.desc.nullslast`;
 
       try {
         const res = await fetch(url, {
@@ -32,7 +31,6 @@ export default function BlogIndexPage() {
     fetchPosts();
   }, []);
 
-  // Dynamically construct the base URL for local or production
   const getFullImageUrl = (url) => {
     if (!url) return null;
     if (url.startsWith('/')) {
@@ -46,7 +44,7 @@ export default function BlogIndexPage() {
     <Layout>
       <div className="max-w-4xl mx-auto">
         <h1 className="text-4xl font-header font-bold text-orange-ember mb-10 text-center">
-           Moon & Embers Blog
+          Moon & Embers Blog
         </h1>
 
         {loading ? (
@@ -71,13 +69,18 @@ export default function BlogIndexPage() {
                 <h2 className="text-2xl font-header font-bold text-white mb-2">{post.title}</h2>
 
                 <p className="text-sm text-ash-light italic mb-3">
-                  {post.published_at ? new Date(post.published_at).toLocaleDateString() : 'Unknown Date'}
+                  {post.published_at
+                    ? new Date(post.published_at).toLocaleDateString()
+                    : 'Unknown Date'}
                 </p>
 
                 <p className="text-base text-white mb-4">{post.excerpt}</p>
 
                 <div className="text-right">
-                  <Link href={`/blog/${post.slug}`} className="text-orange-300 text-sm hover:underline">
+                  <Link
+                    href={`/blog/${post.slug}`}
+                    className="text-orange-300 text-sm hover:underline"
+                  >
                     Read more →
                   </Link>
                 </div>
@@ -89,5 +92,3 @@ export default function BlogIndexPage() {
     </Layout>
   );
 }
-
-

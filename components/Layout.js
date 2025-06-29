@@ -10,11 +10,13 @@ export default function Layout({ children }) {
 
   useEffect(() => {
     const loadSessionAndAvatar = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       setSession(session);
 
       if (session?.user?.id) {
-        const { data, error } = await supabase
+        const { data } = await supabase
           .from('profiles')
           .select('avatar_url')
           .eq('id', session.user.id)
@@ -66,6 +68,14 @@ export default function Layout({ children }) {
 
               {session ? (
                 <div className="flex items-center space-x-3 ml-4">
+                  <a
+                    href="/reportIssue"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-orange-ember hover:underline"
+                  >
+                    Report Issue
+                  </a>
                   <button
                     onClick={handleSignOut}
                     className="text-sm bg-orange-ember text-white px-3 py-1 rounded hover:bg-orange-600"
