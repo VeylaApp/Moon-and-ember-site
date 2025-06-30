@@ -65,6 +65,14 @@ export default function Layout({ children }) {
               <Link href="/blog">Blog</Link>
               <Link href="/about">About</Link>
               <Link href="/contact">Contact</Link>
+              <a
+                href="/beta-test"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-orange-ember text-sm hover:underline"
+              >
+                Beta Test
+              </a>
 
               {session ? (
                 <div className="flex items-center space-x-3 ml-4">

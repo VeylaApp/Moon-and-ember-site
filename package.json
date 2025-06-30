@@ -17,6 +17,7 @@
     "formidable": "^3.5.4",
     "lucide-react": "^0.522.0",
     "next": "latest",
+    "nodemailer": "^7.0.4",
     "react": "latest",
     "react-dom": "latest",
     "react-quill": "^2.0.0",
