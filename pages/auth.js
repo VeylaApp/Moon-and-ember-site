@@ -20,6 +20,58 @@ export default function AuthPage() {
     }
   }, [form.email, view]);
 
+  // *** NEW useEffect for handling session changes and setting cookie ***
+  useEffect(() => {
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        // This listener fires on initial load, after sign-in/sign-up, token refresh, etc.
+        // We only care about SIGNED_IN events that have a valid session.
+        if (event === 'SIGNED_IN' && session) {
+          console.log('User signed in via Supabase. Attempting to set forum cookie...');
+          try {
+            const response = await fetch('/api/set-session-cookie', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                accessToken: session.access_token,
+                refreshToken: session.refresh_token,
+                expiresIn: session.expires_in,
+                user: session.user, // Optional, but good to pass along
+              }),
+            });
+
+            if (response.ok) {
+              console.log('Forum session cookie set successfully by API route.');
+              // Redirect to dashboard or forum *after* cookie is set
+              // Use router.replace to prevent going back to auth page after login
+              router.replace('/grimoire'); 
+            } else {
+              const errorData = await response.json();
+              console.error('Failed to set forum session cookie:', errorData.message);
+              setMessage(`❌ Failed to set forum session: ${errorData.message}`);
+              // Consider a different redirect if cookie setting fails, or display error
+              router.replace('/error?code=sso_cookie_fail'); 
+            }
+          } catch (error) {
+            console.error('Network error calling cookie API route:', error);
+            setMessage('❌ An unexpected network error occurred during SSO setup.');
+            router.replace('/error?code=sso_network_error'); 
+          }
+        } else if (event === 'SIGNED_OUT') {
+            // Optional: If you want to clear the forum cookie on logout from main app
+            // You would need another API route to clear the cookie
+            // fetch('/api/clear-session-cookie', { method: 'POST' });
+        }
+      }
+    );
+
+    return () => {
+      authListener.unsubscribe();
+    };
+  }, [router]); // router is a dependency, include it in the array
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     const normalizedValue = name === 'email' ? value.trim().toLowerCase() : value;
@@ -70,8 +122,14 @@ export default function AuthPage() {
       if (response.error) {
         setMessage(`❌ ${response.error.message}`);
       } else {
-        setMessage(view === 'sign-in' ? '✅ Logged in!' : '✅ Check your email to confirm.');
-        if (view === 'sign-in') router.push('/grimoire');
+        // For sign-up, still show email confirmation message.
+        // For sign-in, the useEffect will handle the redirection after cookie is set.
+        if (view === 'sign-up') {
+          setMessage('✅ Check your email to confirm.');
+        } else {
+          // Message for successful sign-in will be handled by useEffect after cookie logic
+          setMessage('✅ Logging in...'); // Temporary message while cookie is set
+        }
       }
     } catch (err) {
       console.error('Auth error:', err);
