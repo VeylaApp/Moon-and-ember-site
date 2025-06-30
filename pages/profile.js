@@ -1,6 +1,6 @@
 // pages/profile.js
 import { useState, useEffect } from 'react';
-import  supabase  from '@/lib/supabase';
+import supabase from '@/lib/supabase';
 import { useRouter } from 'next/router';
 import Layout from '@/components/Layout';
 
@@ -17,7 +17,7 @@ export default function ProfilePage() {
     moon_sign: '',
     rising_sign: '',
     book_title: '',
-    email: '',
+    email: '', // Keep email in form state
   });
   const [avatarFile, setAvatarFile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -36,7 +36,7 @@ export default function ProfilePage() {
 
       const user = session.user;
       setUserId(user.id);
-      setUserEmail(user.email);
+      setUserEmail(user.email); // User email from auth.user
 
       const { data, error } = await supabase
         .from('profiles')
@@ -48,19 +48,26 @@ export default function ProfilePage() {
         setForm({
           ...form,
           ...data,
-          email: user.email,
+          // Ensure email is always taken from the session user, not profiles table if it exists there
+          email: user.email, 
           share_birthday: data.share_birthday || false,
         });
       } else {
-        setForm((prev) => ({ ...prev, email: user.email }));
+        // If no profile exists, initialize with user ID and email
+        setForm((prev) => ({ 
+          ...prev, 
+          id: user.id, // Initialize id for new profiles
+          email: user.email // Set email for new profiles
+        }));
       }
 
       setLoading(false);
     };
 
     checkSessionAndFetchProfile();
-  }, [router]);
+  }, [router]); // Added router to dependency array as it's used in useEffect
 
+  // Keep handleChange for other fields, but username won't trigger it
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setForm((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
@@ -70,19 +77,28 @@ export default function ProfilePage() {
     const file = e.target.files[0];
     if (file && file.size <= 5 * 1024 * 1024) {
       setAvatarFile(file);
+      setMessage(null); // Clear previous file size message if valid
     } else {
+      setAvatarFile(null); // Clear file if invalid
       setMessage('❌ File must be under 5MB');
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setMessage(null);
+    setMessage(null); // Clear previous messages
     setLoading(true);
+
+    // Removed client-side validation for username length as it's no longer editable
+    // if (form.username.length < 3 || form.username.length > 20) {
+    //   setMessage('❌ Username must be between 3 and 20 characters.');
+    //   setLoading(false);
+    //   return; // Stop form submission
+    // }
 
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
     if (sessionError || !session) {
-      setMessage('❌ No user session found');
+      setMessage('❌ No user session found. Please log in again.');
       setLoading(false);
       return;
     }
@@ -107,22 +123,35 @@ export default function ProfilePage() {
         setMessage('❌ Failed to get public avatar URL');
         setLoading(false);
         return;
+      // !form.email && setMessage('❌ Email is required for profile update.'); // This line was misplaced, moved inside if block or remove based on need. Assuming it's not needed here as email is readOnly
       }
       avatar_url = urlData.publicUrl;
     }
+    // Moved the email check outside the avatar upload logic
+    if (!form.email) {
+      setMessage('❌ Email is required for profile update.');
+      setLoading(false);
+      return;
+    }
+
 
     const upsertData = {
       id: user.id,
       ...form,
       avatar_url,
+      // email is now explicitly kept in upsertData as per your requirement
     };
+    
+    // Ensure email is taken from session.user initially and always,
+    // not relying on the form state's initial empty string for email on new profiles
+    upsertData.email = user.email;
 
     const { error } = await supabase.from('profiles').upsert(upsertData);
 
     if (error) {
-      setMessage(`❌ ${error.message}`);
+      setMessage(`❌ Profile update failed: ${error.message}`);
     } else {
-      setMessage('✅ Profile updated!');
+      setMessage('✅ Profile updated successfully!');
     }
     setLoading(false);
   };
@@ -176,8 +205,17 @@ export default function ProfilePage() {
               className="w-full p-3 rounded-lg bg-slate-700 text-white opacity-70 cursor-not-allowed"
             />
 
-            <label className="block text-sm text-ash-light">Username</label>
-            <input name="username" value={form.username} onChange={handleChange} required className="w-full p-3 rounded-lg bg-slate-800 text-white" />
+            <label className="block text-sm text-ash-light">
+              Username
+              {/* Removed helper text: <span className="text-gray-400 text-xs">(3-20 characters)</span> */}
+            </label>
+            <input
+              name="username"
+              value={form.username}
+              readOnly // Made username read-only
+              className="w-full p-3 rounded-lg bg-slate-700 text-white opacity-70 cursor-not-allowed" // Added styling for read-only
+              // Removed onChange, required, minLength, maxLength as it's read-only
+            />
 
             <label className="block text-sm text-ash-light">Custom Grimoire Name</label>
             <input name="book_title" value={form.book_title} onChange={handleChange} className="w-full p-3 rounded-lg bg-slate-800 text-white" />
