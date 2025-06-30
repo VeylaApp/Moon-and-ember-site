@@ -37,7 +37,7 @@ export default function AuthPage() {
                 accessToken: session.access_token,
                 refreshToken: session.refresh_token,
                 expiresIn: session.expires_in,
-                user: session.user,
+                user: session.user, // This user object contains user_metadata.username
               }),
             });
 
@@ -146,10 +146,10 @@ export default function AuthPage() {
             password,
             options: {
               emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
-              // ⭐ IMPORTANT: Passing first_name and last_name here
-              // The database function 'handle_new_user' *should* pick these up,
-              // but if it's not correctly updated yet, the client-side insert below will use them.
-              data: { username, first_name, last_name },
+              // ⭐ CRITICAL FIX FOR NODEBB DISPLAY NAME:
+              // Only send 'username' to auth.users.raw_user_meta_data.
+              // This is what NodeBB uses for the display name.
+              data: { username },
             },
           });
 
@@ -157,12 +157,13 @@ export default function AuthPage() {
         setMessage(`❌ ${response.error.message}`);
       } else {
         if (view === 'sign-up') {
-          const { user } = response.data; // Get the user object from the signup response
+          const { user } = response.data;
 
           if (user) {
-              // ⭐ RE-INCLUDED: Explicitly insert into the public.profiles table
-              // This acts as a workaround if the Supabase database function isn't updated.
-              // It will ensure first_name and last_name are inserted.
+              // ⭐ CRITICAL FOR PROFILES TABLE:
+              // Explicitly insert into the public.profiles table.
+              // This ensures first_name and last_name are saved,
+              // as the backend 'handle_new_user' function is currently insufficient.
               const { error: profileInsertError } = await supabase
                   .from('profiles')
                   .insert({
@@ -175,8 +176,8 @@ export default function AuthPage() {
                   });
 
               if (profileInsertError) {
-                  // If the database function *is* fixed, this might cause a duplicate key error.
-                  // If the database function is *not* fixed, this is what will save the data.
+                  // This error is likely the RLS policy violation you saw earlier.
+                  // It will be fixed by the RLS policy setup below.
                   console.error('Error inserting into profiles table from client:', profileInsertError);
                   setMessage(`❌ Account created, but profile setup failed: ${profileInsertError.message}. Please contact support.`);
               } else {
