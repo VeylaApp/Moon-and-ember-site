@@ -129,6 +129,15 @@ export default function AuthPage() {
     setMessage(null);
     const { email, password, confirmPassword, username, first_name, last_name } = form;
 
+    // ⭐ ADDED CONSOLE.LOG 1: Check form state right at the start of submission
+    console.log('Form State on Submission:', {
+      email,
+      username,
+      first_name, // Check this value
+      last_name   // Check this value
+      // Omitting 'password' and 'confirmPassword' for security
+    });
+
     if (!emailRegex.test(email)) return setMessage('❌ Invalid email format.');
     if (view === 'sign-up') {
       if (!usernameRegex.test(username)) return setMessage('❌ Username must be 3-20 characters, alphanumeric or underscores.');
@@ -146,9 +155,7 @@ export default function AuthPage() {
             password,
             options: {
               emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
-              // ⭐ UPDATED: Removed first_name and last_name from options.data
-              // These fields are only needed in the 'profiles' table.
-              data: { username }, // Keep username here if you want it in auth.users.raw_user_meta_data
+              data: { username }, // Username for auth.users.raw_user_meta_data (NodeBB)
             },
           });
 
@@ -159,16 +166,23 @@ export default function AuthPage() {
           const { user } = response.data;
 
           if (user) {
-            // ⭐ NO CHANGE: Explicitly insert into the public.profiles table
+            // ⭐ ADDED CONSOLE.LOG 2: Check values just before profiles insert
+            console.log('Preparing to insert into profiles with:', {
+              id: user.id,
+              username: username,
+              first_name: first_name, // This should have a value
+              last_name: last_name,   // This should have a value
+              email: email,
+            });
+
             const { error: profileInsertError } = await supabase
               .from('profiles')
               .insert({
                 id: user.id,
                 username: username,
-                first_name: first_name,
+                first_name: first_name, // This is the value that's going to the DB
                 last_name: last_name,
-                email: email, // Include email if your profiles table has an email column
-                // Add any other required profile fields here with their default or form values
+                email: email,
               });
 
             if (profileInsertError) {
