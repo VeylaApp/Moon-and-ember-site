@@ -12,8 +12,8 @@ export default function AuthPage() {
     password: '',
     confirmPassword: '',
     username: '',
-    first_name: '',
-    last_name: '',
+    // first_name and last_name are intentionally removed from the form state
+    // as they are no longer collected on this page.
   });
   const [message, setMessage] = useState(null);
   const [emailAvailable, setEmailAvailable] = useState(null);
@@ -73,6 +73,9 @@ export default function AuthPage() {
       } else {
         setEmailAvailable(null);
       }
+    } else if (view === 'sign-up') { // Clear validation when email field is empty
+      setIsEmailValid(null);
+      setEmailAvailable(null);
     }
   }, [form.email, view]);
 
@@ -82,9 +85,9 @@ export default function AuthPage() {
         const timer = setTimeout(() => checkUsernameExists(form.username.trim()), 500);
         return () => clearTimeout(timer);
       } else {
-        setUsernameAvailable(false);
+        setUsernameAvailable(false); // Username format invalid
       }
-    } else if (view === 'sign-up') {
+    } else if (view === 'sign-up') { // Clear validation when username field is empty
       setUsernameAvailable(null);
     }
   }, [form.username, view]);
@@ -99,6 +102,7 @@ export default function AuthPage() {
   };
 
   const checkEmailExists = async (email) => {
+    // Corrected: Query profiles table directly for email existence
     const { data, error } = await supabase
       .from('profiles')
       .select('id')
@@ -127,15 +131,37 @@ export default function AuthPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage(null);
-    const { email, password, confirmPassword, username, first_name, last_name } = form;
+    // Destructure only the fields present in the form state
+    const { email, password, confirmPassword, username } = form;
 
-    if (!emailRegex.test(email)) return setMessage('❌ Invalid email format.');
+    // Client-side validation for sign-up view
     if (view === 'sign-up') {
-      if (!usernameRegex.test(username)) return setMessage('❌ Username must be 3-20 characters, alphanumeric or underscores.');
-      if (usernameAvailable === false) return setMessage('❌ Username is taken.');
-      if (password !== confirmPassword) return setMessage('❌ Passwords do not match.');
-      if (!first_name.trim()) return setMessage('❌ First name is required.');
-      if (!last_name.trim()) return setMessage('❌ Last name is required.');
+      if (!emailRegex.test(email)) {
+        setMessage('❌ Invalid email format.');
+        setIsEmailValid(false);
+        return;
+      }
+      if (emailAvailable === false) { // Based on async check
+        setMessage('❌ Email is already registered.');
+        return;
+      }
+      if (!usernameRegex.test(username)) {
+        setMessage('❌ Username must be 3-20 characters, alphanumeric or underscores.');
+        setUsernameAvailable(false);
+        return;
+      }
+      if (usernameAvailable === false) { // Based on async check
+        setMessage('❌ Username is taken.');
+        return;
+      }
+      if (password.length < 6) { // Supabase default min password length
+        setMessage('❌ Password must be at least 6 characters.');
+        return;
+      }
+      if (password !== confirmPassword) {
+        setMessage('❌ Passwords do not match.');
+        return;
+      }
     }
 
     try {
@@ -146,7 +172,7 @@ export default function AuthPage() {
             password,
             options: {
               emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
-              // ⭐ CRITICAL FIX FOR NODEBB DISPLAY NAME:
+              // ⭐ CRITICAL FOR NODEBB DISPLAY NAME:
               // Only send 'username' to auth.users.raw_user_meta_data.
               // This is what NodeBB uses for the display name.
               data: { username },
@@ -160,29 +186,26 @@ export default function AuthPage() {
           const { user } = response.data;
 
           if (user) {
-              // ⭐ CRITICAL FOR PROFILES TABLE:
-              // Explicitly insert into the public.profiles table.
-              // This ensures first_name and last_name are saved,
-              // as the backend 'handle_new_user' function is currently insufficient.
-              const { error: profileInsertError } = await supabase
-                  .from('profiles')
-                  .insert({
-                      id: user.id, // Link to auth.users.id
-                      username: username,
-                      first_name: first_name, // Your form value
-                      last_name: last_name,   // Your form value
-                      email: email, // Include email if profiles table has it
-                      // ... any other required profile fields that are not null
-                  });
+            // ⭐ CRITICAL FOR PROFILES TABLE (Client-side completion):
+            // This will upsert (update or insert) the profile created by the trigger.
+            // It will *not* include first_name or last_name as they are removed from the form.
+            const { error: profileUpsertError } = await supabase
+                .from('profiles')
+                .upsert({ // Changed to .upsert
+                    id: user.id, // Link to auth.users.id
+                    username: username, // Use the username from the form
+                    email: email, // Include email if profiles table has it
+                });
 
-              if (profileInsertError) {
-                  // This error is likely the RLS policy violation you saw earlier.
-                  // It will be fixed by the RLS policy setup below.
-                  console.error('Error inserting into profiles table from client:', profileInsertError);
-                  setMessage(`❌ Account created, but profile setup failed: ${profileInsertError.message}. Please contact support.`);
-              } else {
-                  setMessage('✅ Check your email to confirm your account! Your profile has been set up.');
-              }
+            if (profileUpsertError) {
+                console.error('Error upserting profile from client:', profileUpsertError);
+                setMessage(`❌ Account created, but profile setup failed: ${profileUpsertError.message}. Please contact support.`);
+            } else {
+                setMessage('✅ Check your email to confirm your account! Your profile has been set up.');
+                // At this point, the user is created and profile (id, username, email) is upserted.
+                // If first/last name are *required* later, you would redirect to a 'complete profile' page here.
+                // For now, based on previous conversation, the login flow takes them to /grimoire after email confirm.
+            }
           } else {
               setMessage('✅ Check your email to confirm your account! User data missing for profile setup.');
           }
@@ -207,17 +230,17 @@ export default function AuthPage() {
     setMessage(error ? `❌ ${error.message}` : '✅ Reset link sent to email.');
   };
 
+  // Simplified disable logic for sign-up button, reflecting removed fields
   const isSignUpButtonDisabled =
     view === 'sign-up' && (
-      !isEmailValid ||
-      emailAvailable === false ||
-      !usernameRegex.test(form.username) ||
-      usernameAvailable === false ||
-      !form.username.trim() ||
-      form.password !== form.confirmPassword ||
-      !form.password ||
-      !form.first_name.trim() ||
-      !form.last_name.trim()
+      !isEmailValid || // Email format is invalid
+      emailAvailable === false || // Email is taken
+      !usernameRegex.test(form.username) || // Username format is invalid
+      usernameAvailable === false || // Username is taken
+      !form.username.trim() || // Username field is empty
+      form.password !== form.confirmPassword || // Passwords don't match
+      !form.password || // Password field is empty
+      form.password.length < 6 // Password too short
     );
 
 
@@ -239,14 +262,23 @@ export default function AuthPage() {
           {message && <p className="mb-4 text-sm text-center">{message}</p>}
 
           <form onSubmit={handleSubmit} className="space-y-3">
-            <input type="email" name="email" placeholder="Email" value={form.email} onChange={handleChange} required className="w-full px-2 py-1 text-sm rounded bg-slate-800 text-white" />
+            <div className="relative"> {/* Wrapper for email input and icon */}
+              <input type="email" name="email" placeholder="Email" value={form.email} onChange={handleChange} required className="w-full px-2 py-1 text-sm rounded bg-slate-800 text-white pr-8" />
+              {(form.email.trim() && view === 'sign-up') && ( // Only show indicator in sign-up view and if email is typed
+                isEmailValid === true && emailAvailable === true ? <Check className="text-green-500 absolute right-2 top-1/2 -translate-y-1/2" size={16} /> :
+                (isEmailValid === false || emailAvailable === false) ? <X className="text-red-500 absolute right-2 top-1/2 -translate-y-1/2" size={16} /> : null
+              )}
+            </div>
 
             {view === 'sign-up' && (
-              <>
-                <input type="text" name="first_name" placeholder="First Name" value={form.first_name} onChange={handleChange} required className="w-full px-2 py-1 text-sm rounded bg-slate-800 text-white" />
-                <input type="text" name="last_name" placeholder="Last Name" value={form.last_name} onChange={handleChange} required className="w-full px-2 py-1 text-sm rounded bg-slate-800 text-white" />
-                <input type="text" name="username" placeholder="Username (3-20 chars)" value={form.username} onChange={handleChange} required className="w-full px-2 py-1 text-sm rounded bg-slate-800 text-white" />
-              </>
+              <div className="relative">
+                {/* First Name and Last Name inputs are removed */}
+                <input type="text" name="username" placeholder="Username (3-20 chars, alphanumeric/_)" value={form.username} onChange={handleChange} required className="w-full px-2 py-1 text-sm rounded bg-slate-800 text-white pr-8" />
+                {(form.username.trim() && usernameRegex.test(form.username.trim())) && (
+                  usernameAvailable === true ? <Check className="text-green-500 absolute right-2 top-1/2 -translate-y-1/2" size={16} /> :
+                  usernameAvailable === false ? <X className="text-red-500 absolute right-2 top-1/2 -translate-y-1/2" size={16} /> : null
+                )}
+              </div>
             )}
 
             <input type={showPassword ? 'text' : 'password'} name="password" placeholder="Password" value={form.password} onChange={handleChange} required className="w-full px-2 py-1 text-sm rounded bg-slate-800 text-white" />
