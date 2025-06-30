@@ -26,32 +26,6 @@ export default function AuthPage() {
   const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
 
   useEffect(() => {
-    if (view === 'sign-up' && form.email.trim()) {
-      const isValid = emailRegex.test(form.email.trim().toLowerCase());
-      setIsEmailValid(isValid);
-      if (isValid) {
-        const timer = setTimeout(() => checkEmailExists(form.email.trim().toLowerCase()), 500);
-        return () => clearTimeout(timer);
-      } else {
-        setEmailAvailable(null);
-      }
-    }
-  }, [form.email, view]);
-
-  useEffect(() => {
-    if (view === 'sign-up' && form.username.trim()) {
-      if (usernameRegex.test(form.username.trim())) {
-        const timer = setTimeout(() => checkUsernameExists(form.username.trim()), 500);
-        return () => clearTimeout(timer);
-      } else {
-        setUsernameAvailable(false);
-      }
-    } else if (view === 'sign-up') {
-      setUsernameAvailable(null);
-    }
-  }, [form.username, view]);
-
-  useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (event === 'SIGNED_IN' && session) {
@@ -88,6 +62,32 @@ export default function AuthPage() {
       if (subscription?.unsubscribe) subscription.unsubscribe();
     };
   }, [router]);
+
+  useEffect(() => {
+    if (view === 'sign-up' && form.email.trim()) {
+      const isValid = emailRegex.test(form.email.trim().toLowerCase());
+      setIsEmailValid(isValid);
+      if (isValid) {
+        const timer = setTimeout(() => checkEmailExists(form.email.trim().toLowerCase()), 500);
+        return () => clearTimeout(timer);
+      } else {
+        setEmailAvailable(null);
+      }
+    }
+  }, [form.email, view]);
+
+  useEffect(() => {
+    if (view === 'sign-up' && form.username.trim()) {
+      if (usernameRegex.test(form.username.trim())) {
+        const timer = setTimeout(() => checkUsernameExists(form.username.trim()), 500);
+        return () => clearTimeout(timer);
+      } else {
+        setUsernameAvailable(false);
+      }
+    } else if (view === 'sign-up') {
+      setUsernameAvailable(null);
+    }
+  }, [form.username, view]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -129,15 +129,6 @@ export default function AuthPage() {
     setMessage(null);
     const { email, password, confirmPassword, username, first_name, last_name } = form;
 
-    // ⭐ ADDED CONSOLE.LOG 1: Check form state right at the start of submission
-    console.log('Form State on Submission:', {
-      email,
-      username,
-      first_name, // Check this value
-      last_name   // Check this value
-      // Omitting 'password' and 'confirmPassword' for security
-    });
-
     if (!emailRegex.test(email)) return setMessage('❌ Invalid email format.');
     if (view === 'sign-up') {
       if (!usernameRegex.test(username)) return setMessage('❌ Username must be 3-20 characters, alphanumeric or underscores.');
@@ -155,7 +146,10 @@ export default function AuthPage() {
             password,
             options: {
               emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
-              data: { username }, // Username for auth.users.raw_user_meta_data (NodeBB)
+              // ⭐ IMPORTANT: Passing first_name and last_name here
+              // The database function 'handle_new_user' *should* pick these up,
+              // but if it's not correctly updated yet, the client-side insert below will use them.
+              data: { username, first_name, last_name },
             },
           });
 
@@ -163,38 +157,35 @@ export default function AuthPage() {
         setMessage(`❌ ${response.error.message}`);
       } else {
         if (view === 'sign-up') {
-          const { user } = response.data;
+          const { user } = response.data; // Get the user object from the signup response
 
           if (user) {
-            // ⭐ ADDED CONSOLE.LOG 2: Check values just before profiles insert
-            console.log('Preparing to insert into profiles with:', {
-              id: user.id,
-              username: username,
-              first_name: first_name, // This should have a value
-              last_name: last_name,   // This should have a value
-              email: email,
-            });
+              // ⭐ RE-INCLUDED: Explicitly insert into the public.profiles table
+              // This acts as a workaround if the Supabase database function isn't updated.
+              // It will ensure first_name and last_name are inserted.
+              const { error: profileInsertError } = await supabase
+                  .from('profiles')
+                  .insert({
+                      id: user.id, // Link to auth.users.id
+                      username: username,
+                      first_name: first_name, // Your form value
+                      last_name: last_name,   // Your form value
+                      email: email, // Include email if profiles table has it
+                      // ... any other required profile fields that are not null
+                  });
 
-            const { error: profileInsertError } = await supabase
-              .from('profiles')
-              .insert({
-                id: user.id,
-                username: username,
-                first_name: first_name, // This is the value that's going to the DB
-                last_name: last_name,
-                email: email,
-              });
-
-            if (profileInsertError) {
-              console.error('Error inserting into profiles table:', profileInsertError);
-              setMessage(`❌ Account created, but profile setup failed: ${profileInsertError.message}. Please contact support.`);
-            } else {
-              setMessage('✅ Check your email to confirm your account! Your profile has been set up.');
-            }
+              if (profileInsertError) {
+                  // If the database function *is* fixed, this might cause a duplicate key error.
+                  // If the database function is *not* fixed, this is what will save the data.
+                  console.error('Error inserting into profiles table from client:', profileInsertError);
+                  setMessage(`❌ Account created, but profile setup failed: ${profileInsertError.message}. Please contact support.`);
+              } else {
+                  setMessage('✅ Check your email to confirm your account! Your profile has been set up.');
+              }
           } else {
-            setMessage('✅ Check your email to confirm your account! User data was missing for profile setup.');
+              setMessage('✅ Check your email to confirm your account! User data missing for profile setup.');
           }
-        } else {
+        } else { // sign-in view
           setMessage('✅ Logging in...');
         }
       }
@@ -228,6 +219,7 @@ export default function AuthPage() {
       !form.last_name.trim()
     );
 
+
   return (
     <Layout>
       <div className="min-h-screen flex items-center justify-center bg-black-veil text-white px-4">
@@ -252,7 +244,7 @@ export default function AuthPage() {
               <>
                 <input type="text" name="first_name" placeholder="First Name" value={form.first_name} onChange={handleChange} required className="w-full px-2 py-1 text-sm rounded bg-slate-800 text-white" />
                 <input type="text" name="last_name" placeholder="Last Name" value={form.last_name} onChange={handleChange} required className="w-full px-2 py-1 text-sm rounded bg-slate-800 text-white" />
-                <input type="text" name="username" placeholder="Username (3-20 chars, no spaces)" value={form.username} onChange={handleChange} required className="w-full px-2 py-1 text-sm rounded bg-slate-800 text-white" />
+                <input type="text" name="username" placeholder="Username (3-20 chars)" value={form.username} onChange={handleChange} required className="w-full px-2 py-1 text-sm rounded bg-slate-800 text-white" />
               </>
             )}
 
