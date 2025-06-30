@@ -187,7 +187,52 @@ export default function AuthPage() {
 
   return (
     <Layout>
-      {/* FORM LAYOUT OMITTED FOR BREVITY, SAME AS PREVIOUS WITH ADDED first_name, last_name INPUTS */}
+      <div className="min-h-screen flex items-center justify-center bg-black-veil text-white px-4">
+        <div className="bg-forest/70 border border-white/10 backdrop-blur-md rounded-xl p-6 w-full max-w-sm shadow-lg">
+          <div className="flex justify-center mb-5 space-x-4">
+            <button onClick={() => setView('sign-in')}
+              className={`px-3 py-1 rounded text-sm ${view === 'sign-in' ? 'bg-orange-ember text-white' : 'bg-black/30 text-ash-light'}`}>
+              Sign In
+            </button>
+            <button onClick={() => setView('sign-up')}
+              className={`px-3 py-1 rounded text-sm ${view === 'sign-up' ? 'bg-orange-ember text-white' : 'bg-black/30 text-ash-light'}`}>
+              Sign Up
+            </button>
+          </div>
+
+          {message && <p className="mb-4 text-sm text-center">{message}</p>}
+
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <input type="email" name="email" placeholder="Email" value={form.email} onChange={handleChange} required className="w-full px-2 py-1 text-sm rounded bg-slate-800 text-white" />
+
+            {view === 'sign-up' && (
+              <>
+                <input type="text" name="first_name" placeholder="First Name" value={form.first_name} onChange={handleChange} required className="w-full px-2 py-1 text-sm rounded bg-slate-800 text-white" />
+                <input type="text" name="last_name" placeholder="Last Name" value={form.last_name} onChange={handleChange} required className="w-full px-2 py-1 text-sm rounded bg-slate-800 text-white" />
+                <input type="text" name="username" placeholder="Username (3-20 chars)" value={form.username} onChange={handleChange} required className="w-full px-2 py-1 text-sm rounded bg-slate-800 text-white" />
+              </>
+            )}
+
+            <input type={showPassword ? 'text' : 'password'} name="password" placeholder="Password" value={form.password} onChange={handleChange} required className="w-full px-2 py-1 text-sm rounded bg-slate-800 text-white" />
+            {view === 'sign-up' && <input type={showPassword ? 'text' : 'password'} name="confirmPassword" placeholder="Confirm Password" value={form.confirmPassword} onChange={handleChange} required className="w-full px-2 py-1 text-sm rounded bg-slate-800 text-white" />}
+
+            <label className="text-xs text-white flex items-center space-x-2">
+              <input type="checkbox" checked={showPassword} onChange={() => setShowPassword(!showPassword)} />
+              <span>Show Password</span>
+            </label>
+
+            {view === 'sign-in' && (
+              <button type="button" onClick={handleForgotPassword} className="text-xs text-orange-400 hover:underline">
+                Forgot password?
+              </button>
+            )}
+
+            <button type="submit" disabled={view === 'sign-up' ? isSignUpButtonDisabled : false} className="w-full bg-orange-ember hover:bg-orange-600 text-white py-1.5 text-sm rounded disabled:opacity-50 disabled:cursor-not-allowed">
+              {view === 'sign-in' ? 'Log In' : 'Create Account'}
+            </button>
+          </form>
+        </div>
+      </div>
     </Layout>
   );
 }
