@@ -137,7 +137,9 @@ export default function AuthPage() {
             password,
             options: {
               emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
-              data: { username },
+              data: {
+                "Display Name": username, // ✅ THIS IS THE FIX
+              },
             },
           });
 
