@@ -132,8 +132,10 @@ export default function AuthPage() {
     if (!emailRegex.test(email)) return setMessage('❌ Invalid email format.');
     if (view === 'sign-up') {
       if (!usernameRegex.test(username)) return setMessage('❌ Username must be 3-20 characters, alphanumeric or underscores.');
-      if (!usernameAvailable) return setMessage('❌ Username is taken.');
+      if (usernameAvailable === false) return setMessage('❌ Username is taken.');
       if (password !== confirmPassword) return setMessage('❌ Passwords do not match.');
+      if (!first_name.trim()) return setMessage('❌ First name is required.');
+      if (!last_name.trim()) return setMessage('❌ Last name is required.');
     }
 
     try {
@@ -144,16 +146,43 @@ export default function AuthPage() {
             password,
             options: {
               emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
-              data: { username, first_name, last_name },
+              // ⭐ UPDATED: Removed first_name and last_name from options.data
+              // These fields are only needed in the 'profiles' table.
+              data: { username }, // Keep username here if you want it in auth.users.raw_user_meta_data
             },
           });
 
       if (response.error) {
         setMessage(`❌ ${response.error.message}`);
       } else {
-        setMessage(view === 'sign-up'
-          ? '✅ Check your email to confirm your account.'
-          : '✅ Logging in...');
+        if (view === 'sign-up') {
+          const { user } = response.data;
+
+          if (user) {
+            // ⭐ NO CHANGE: Explicitly insert into the public.profiles table
+            const { error: profileInsertError } = await supabase
+              .from('profiles')
+              .insert({
+                id: user.id,
+                username: username,
+                first_name: first_name,
+                last_name: last_name,
+                email: email, // Include email if your profiles table has an email column
+                // Add any other required profile fields here with their default or form values
+              });
+
+            if (profileInsertError) {
+              console.error('Error inserting into profiles table:', profileInsertError);
+              setMessage(`❌ Account created, but profile setup failed: ${profileInsertError.message}. Please contact support.`);
+            } else {
+              setMessage('✅ Check your email to confirm your account! Your profile has been set up.');
+            }
+          } else {
+            setMessage('✅ Check your email to confirm your account! User data was missing for profile setup.');
+          }
+        } else {
+          setMessage('✅ Logging in...');
+        }
       }
     } catch (err) {
       console.error('Auth error:', err);
@@ -175,14 +204,14 @@ export default function AuthPage() {
   const isSignUpButtonDisabled =
     view === 'sign-up' && (
       !isEmailValid ||
-      !emailAvailable ||
+      emailAvailable === false ||
       !usernameRegex.test(form.username) ||
-      !form.username ||
-      !usernameAvailable ||
+      usernameAvailable === false ||
+      !form.username.trim() ||
       form.password !== form.confirmPassword ||
       !form.password ||
-      !form.first_name ||
-      !form.last_name
+      !form.first_name.trim() ||
+      !form.last_name.trim()
     );
 
   return (
@@ -227,7 +256,7 @@ export default function AuthPage() {
               </button>
             )}
 
-            <button type="submit" disabled={view === 'sign-up' ? isSignUpButtonDisabled : false} className="w-full bg-orange-ember hover:bg-orange-600 text-white py-1.5 text-sm rounded disabled:opacity-50 disabled:cursor-not-allowed">
+            <button type="submit" disabled={isSignUpButtonDisabled} className="w-full bg-orange-ember hover:bg-orange-600 text-white py-1.5 text-sm rounded disabled:opacity-50 disabled:cursor-not-allowed">
               {view === 'sign-in' ? 'Log In' : 'Create Account'}
             </button>
           </form>
