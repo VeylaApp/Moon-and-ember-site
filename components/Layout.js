@@ -61,7 +61,7 @@ export default function Layout({ children }) {
               <Link href="/">Home</Link>
               <Link href="/grimoire">Grimoire</Link>
               <Link href="/journal">Journal</Link>
-              <Link href="/forum">Forum</Link>
+              <Link href="https://forum.moonandembers.com">Forum</Link>
               <Link href="/blog">Blog</Link>
               <Link href="/about">About</Link>
               <Link href="/contact">Contact</Link>

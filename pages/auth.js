@@ -20,9 +20,10 @@ export default function AuthPage() {
     }
   }, [form.email, view]);
 
-  // *** NEW useEffect for handling session changes and setting cookie ***
+  // *** UPDATED useEffect for handling session changes and setting cookie ***
   useEffect(() => {
-    const { data: authListener } = supabase.auth.onAuthStateChange(
+    // Correctly destructure the return value to get the 'data' object which contains 'subscription'
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         // This listener fires on initial load, after sign-in/sign-up, token refresh, etc.
         // We only care about SIGNED_IN events that have a valid session.
@@ -68,7 +69,10 @@ export default function AuthPage() {
     );
 
     return () => {
-      authListener.unsubscribe();
+      // Use the 'subscription' object to unsubscribe
+      if (subscription && typeof subscription.unsubscribe === 'function') {
+        subscription.unsubscribe();
+      }
     };
   }, [router]); // router is a dependency, include it in the array
 
