@@ -183,32 +183,10 @@ export default function AuthPage() {
         setMessage(`❌ ${response.error.message}`);
       } else {
         if (view === 'sign-up') {
-          const { user } = response.data;
-
-          if (user) {
-            // ⭐ CRITICAL FOR PROFILES TABLE (Client-side completion):
-            // This will upsert (update or insert) the profile created by the trigger.
-            // It will *not* include first_name or last_name as they are removed from the form.
-            const { error: profileUpsertError } = await supabase
-                .from('profiles')
-                .upsert({ // Changed to .upsert
-                    id: user.id, // Link to auth.users.id
-                    username: username, // Use the username from the form
-                    email: email, // Include email if profiles table has it
-                });
-
-            if (profileUpsertError) {
-                console.error('Error upserting profile from client:', profileUpsertError);
-                setMessage(`❌ Account created, but profile setup failed: ${profileUpsertError.message}. Please contact support.`);
-            } else {
-                setMessage('✅ Check your email to confirm your account! Your profile has been set up.');
-                // At this point, the user is created and profile (id, username, email) is upserted.
-                // If first/last name are *required* later, you would redirect to a 'complete profile' page here.
-                // For now, based on previous conversation, the login flow takes them to /grimoire after email confirm.
-            }
-          } else {
-              setMessage('✅ Check your email to confirm your account! User data missing for profile setup.');
-          }
+          // ⭐ CRITICAL CHANGE: The client-side profile upsert has been REMOVED here.
+          // The initial profile row is now solely handled by the database trigger (handle_new_user)
+          // that fires after a new user is inserted into auth.users.
+          setMessage('✅ Check your email to confirm your account!');
         } else { // sign-in view
           setMessage('✅ Logging in...');
         }
