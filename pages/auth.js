@@ -12,19 +12,23 @@ export default function AuthPage() {
     password: '',
     confirmPassword: '',
     username: '',
-    // first_name and last_name are intentionally removed from the form state
-    // as they are no longer collected on this page.
   });
-  const [message, setMessage] = useState(null);
+  const [message, setMessage] = useState(null); // General form submission messages
+
+  // Validation states for real-time feedback
   const [emailAvailable, setEmailAvailable] = useState(null);
   const [isEmailValid, setIsEmailValid] = useState(null);
   const [usernameAvailable, setUsernameAvailable] = useState(null);
+  const [isPasswordTooShort, setIsPasswordTooShort] = useState(null); // New
+  const [doPasswordsMatch, setDoPasswordsMatch] = useState(null);     // New
+
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
+  const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/; // Adjusted regex for username length
 
+  // Effect for handling authentication state changes and cookie setup
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
@@ -63,6 +67,7 @@ export default function AuthPage() {
     };
   }, [router]);
 
+  // Effect for email validation (real-time)
   useEffect(() => {
     if (view === 'sign-up' && form.email.trim()) {
       const isValid = emailRegex.test(form.email.trim().toLowerCase());
@@ -71,14 +76,15 @@ export default function AuthPage() {
         const timer = setTimeout(() => checkEmailExists(form.email.trim().toLowerCase()), 500);
         return () => clearTimeout(timer);
       } else {
-        setEmailAvailable(null);
+        setEmailAvailable(null); // Clear availability if format invalid
       }
-    } else if (view === 'sign-up') { // Clear validation when email field is empty
+    } else if (view === 'sign-up') {
       setIsEmailValid(null);
       setEmailAvailable(null);
     }
   }, [form.email, view]);
 
+  // Effect for username validation (real-time)
   useEffect(() => {
     if (view === 'sign-up' && form.username.trim()) {
       if (usernameRegex.test(form.username.trim())) {
@@ -87,10 +93,33 @@ export default function AuthPage() {
       } else {
         setUsernameAvailable(false); // Username format invalid
       }
-    } else if (view === 'sign-up') { // Clear validation when username field is empty
+    } else if (view === 'sign-up') {
       setUsernameAvailable(null);
     }
   }, [form.username, view]);
+
+  // Effect for password validation (real-time)
+  useEffect(() => {
+    if (view === 'sign-up') {
+      // Check password length
+      if (form.password.length > 0) { // Only check if password is not empty
+        setIsPasswordTooShort(form.password.length < 6);
+      } else {
+        setIsPasswordTooShort(null); // No error if empty
+      }
+
+      // Check password match, only if confirmPassword is also typed
+      if (form.password.length > 0 && form.confirmPassword.length > 0) {
+        setDoPasswordsMatch(form.password === form.confirmPassword);
+      } else {
+        setDoPasswordsMatch(null); // No error if one or both are empty
+      }
+    } else { // Reset on view change
+      setIsPasswordTooShort(null);
+      setDoPasswordsMatch(null);
+    }
+  }, [form.password, form.confirmPassword, view]);
+
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -98,11 +127,11 @@ export default function AuthPage() {
     if (name === 'email') normalized = value.trim().toLowerCase();
     if (name === 'username') normalized = value.trim();
     setForm(prev => ({ ...prev, [name]: normalized }));
+    // Clear general message on any input change
     setMessage(null);
   };
 
   const checkEmailExists = async (email) => {
-    // Corrected: Query profiles table directly for email existence
     const { data, error } = await supabase
       .from('profiles')
       .select('id')
@@ -130,31 +159,21 @@ export default function AuthPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setMessage(null);
-    // Destructure only the fields present in the form state
+    setMessage(null); // Clear messages on submission attempt
     const { email, password, confirmPassword, username } = form;
 
-    // Client-side validation for sign-up view
+    // Client-side validation for sign-up view - these are now primarily for preventing submission
+    // and as a final check, as real-time feedback is handled by useEffects.
     if (view === 'sign-up') {
-      if (!emailRegex.test(email)) {
-        setMessage('❌ Invalid email format.');
-        setIsEmailValid(false);
+      if (!isEmailValid || emailAvailable === false) {
+        setMessage('❌ Please correct email issues.');
         return;
       }
-      if (emailAvailable === false) { // Based on async check
-        setMessage('❌ Email is already registered.');
+      if (!usernameRegex.test(username) || usernameAvailable === false) {
+        setMessage('❌ Please correct username issues.');
         return;
       }
-      if (!usernameRegex.test(username)) {
-        setMessage('❌ Username must be 3-20 characters, alphanumeric or underscores.');
-        setUsernameAvailable(false);
-        return;
-      }
-      if (usernameAvailable === false) { // Based on async check
-        setMessage('❌ Username is taken.');
-        return;
-      }
-      if (password.length < 6) { // Supabase default min password length
+      if (password.length < 6) {
         setMessage('❌ Password must be at least 6 characters.');
         return;
       }
@@ -172,9 +191,6 @@ export default function AuthPage() {
             password,
             options: {
               emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
-              // ⭐ CRITICAL FOR NODEBB DISPLAY NAME:
-              // Only send 'username' to auth.users.raw_user_meta_data.
-              // This is what NodeBB uses for the display name.
               data: { username },
             },
           });
@@ -183,9 +199,6 @@ export default function AuthPage() {
         setMessage(`❌ ${response.error.message}`);
       } else {
         if (view === 'sign-up') {
-          // ⭐ CRITICAL CHANGE: The client-side profile upsert has been REMOVED here.
-          // The initial profile row is now solely handled by the database trigger (handle_new_user)
-          // that fires after a new user is inserted into auth.users.
           setMessage('✅ Check your email to confirm your account!');
         } else { // sign-in view
           setMessage('✅ Logging in...');
@@ -216,9 +229,10 @@ export default function AuthPage() {
       !usernameRegex.test(form.username) || // Username format is invalid
       usernameAvailable === false || // Username is taken
       !form.username.trim() || // Username field is empty
-      form.password !== form.confirmPassword || // Passwords don't match
+      isPasswordTooShort || // Password too short
+      doPasswordsMatch === false || // Passwords don't match
       !form.password || // Password field is empty
-      form.password.length < 6 // Password too short
+      !form.confirmPassword // Confirm password field is empty
     );
 
 
@@ -249,18 +263,40 @@ export default function AuthPage() {
             </div>
 
             {view === 'sign-up' && (
-              <div className="relative">
-                {/* First Name and Last Name inputs are removed */}
-                <input type="text" name="username" placeholder="Username (3-20 chars, alphanumeric/_)" value={form.username} onChange={handleChange} required className="w-full px-2 py-1 text-sm rounded bg-slate-800 text-white pr-8" />
-                {(form.username.trim() && usernameRegex.test(form.username.trim())) && (
-                  usernameAvailable === true ? <Check className="text-green-500 absolute right-2 top-1/2 -translate-y-1/2" size={16} /> :
-                  usernameAvailable === false ? <X className="text-red-500 absolute right-2 top-1/2 -translate-y-1/2" size={16} /> : null
-                )}
-              </div>
+              <>
+                <div className="relative">
+                  <input type="text" name="username" placeholder="Username (3-20 chars, alphanumeric/_)" value={form.username} onChange={handleChange} required className="w-full px-2 py-1 text-sm rounded bg-slate-800 text-white pr-8" />
+                  {(form.username.trim() && usernameRegex.test(form.username.trim())) && (
+                    usernameAvailable === true ? <Check className="text-green-500 absolute right-2 top-1/2 -translate-y-1/2" size={16} /> :
+                    usernameAvailable === false ? <X className="text-red-500 absolute right-2 top-1/2 -translate-y-1/2" size={16} /> : null
+                  )}
+                  {form.username.trim() && !usernameRegex.test(form.username.trim()) && (
+                    <p className="text-red-400 text-xs mt-1">Username must be 3-20 characters, alphanumeric or underscores.</p>
+                  )}
+                  {usernameAvailable === false && usernameRegex.test(form.username.trim()) && (
+                    <p className="text-red-400 text-xs mt-1">Username is taken.</p>
+                  )}
+                </div>
+
+                <div className="relative">
+                  <input type={showPassword ? 'text' : 'password'} name="password" placeholder="Password" value={form.password} onChange={handleChange} required className="w-full px-2 py-1 text-sm rounded bg-slate-800 text-white" />
+                  {isPasswordTooShort && form.password.length > 0 && (
+                    <p className="text-red-400 text-xs mt-1">Password must be at least 6 characters.</p>
+                  )}
+                </div>
+
+                <div className="relative">
+                  <input type={showPassword ? 'text' : 'password'} name="confirmPassword" placeholder="Confirm Password" value={form.confirmPassword} onChange={handleChange} required className="w-full px-2 py-1 text-sm rounded bg-slate-800 text-white" />
+                  {doPasswordsMatch === false && form.confirmPassword.length > 0 && (
+                    <p className="text-red-400 text-xs mt-1">Passwords do not match.</p>
+                  )}
+                </div>
+              </>
             )}
 
-            <input type={showPassword ? 'text' : 'password'} name="password" placeholder="Password" value={form.password} onChange={handleChange} required className="w-full px-2 py-1 text-sm rounded bg-slate-800 text-white" />
-            {view === 'sign-up' && <input type={showPassword ? 'text' : 'password'} name="confirmPassword" placeholder="Confirm Password" value={form.confirmPassword} onChange={handleChange} required className="w-full px-2 py-1 text-sm rounded bg-slate-800 text-white" />}
+            {view === 'sign-in' && (
+              <input type={showPassword ? 'text' : 'password'} name="password" placeholder="Password" value={form.password} onChange={handleChange} required className="w-full px-2 py-1 text-sm rounded bg-slate-800 text-white" />
+            )}
 
             <label className="text-xs text-white flex items-center space-x-2">
               <input type="checkbox" checked={showPassword} onChange={() => setShowPassword(!showPassword)} />
