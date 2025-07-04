@@ -3,9 +3,9 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import supabase from '@/lib/supabase'
 import AdminLayout from '@/components/AdminLayout'
-import dynamic from 'next/dynamic'
+import nextDynamic from 'next/dynamic' // renamed to avoid conflict with export below
 
-const ReactQuill = dynamic(() => import('react-quill'), { ssr: false })
+const ReactQuill = nextDynamic(() => import('react-quill'), { ssr: false })
 import 'react-quill/dist/quill.snow.css'
 
 export default function EditBlogPost() {
