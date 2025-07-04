@@ -62,7 +62,9 @@ export default function ViewEntries() {
         if (query.mode === 'master') {
           supabaseQuery = supabaseQuery.eq('is_master_grimoire', true).eq('review_status', 'approved');
         } else if (query.mode === 'my') {
-          supabaseQuery = supabaseQuery.eq('user_id', session.user.id);
+          supabaseQuery = supabaseQuery
+            .eq('user_id', session.user.id)
+            .eq('is_master_grimoire', false);
         } else if (query.mode === 'search' && query.q) {
           const searchTerm = `%${query.q}%`;
           supabaseQuery = supabaseQuery.or(`
