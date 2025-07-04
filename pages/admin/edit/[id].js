@@ -175,3 +175,6 @@ export default function EditBlogPost() {
     </AdminLayout>
   )
 }
+
+// ⛔ Prevent pre-render error during build
+export const dynamic = 'force-dynamic'
