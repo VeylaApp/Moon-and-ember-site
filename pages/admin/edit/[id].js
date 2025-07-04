@@ -1,16 +1,17 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useRouter } from 'next/router'
 import supabase from '@/lib/supabase'
 import AdminLayout from '@/components/AdminLayout'
-import nextDynamic from 'next/dynamic' // renamed to avoid conflict with export below
+import dynamic from 'next/dynamic'
 
-const ReactQuill = nextDynamic(() => import('react-quill'), { ssr: false })
+const ReactQuill = dynamic(() => import('react-quill'), { ssr: false })
 import 'react-quill/dist/quill.snow.css'
 
 export default function EditBlogPost() {
-  const { id } = useParams()
   const router = useRouter()
+  const { id } = router.query
+
   const [blog, setBlog] = useState(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -68,7 +69,7 @@ export default function EditBlogPost() {
     }
   }
 
-  if (loading) {
+  if (!id || loading) {
     return (
       <AdminLayout>
         <div className="p-6 text-white">Loading blog post...</div>
@@ -175,6 +176,3 @@ export default function EditBlogPost() {
     </AdminLayout>
   )
 }
-
-// ⛔ Prevent pre-render error during build
-export const dynamic = 'force-dynamic'
