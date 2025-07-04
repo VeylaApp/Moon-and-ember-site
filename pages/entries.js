@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import  supabase  from '@/lib/supabase';
+import supabase from '@/lib/supabase';
 import Layout from '@/components/Layout';
 import { format } from 'date-fns';
 
@@ -110,6 +110,30 @@ export default function ViewEntries() {
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     router.push(`/entries?mode=search&q=${encodeURIComponent(searchInput)}`);
+  };
+
+  const handleImport = async (card) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+
+    const { error } = await supabase.from('cards').insert({
+      user_id: session.user.id,
+      title: card.title,
+      description: card.description,
+      tags: card.tags,
+      image_url: card.image_url,
+      category_id: card.category_id,
+      supplies: card.supplies,
+      private: true,
+      is_master_grimoire: false,
+      on_hand: null,
+    });
+
+    if (error) {
+      alert('Failed to import entry.');
+    } else {
+      alert('Entry imported to your Grimoire!');
+    }
   };
 
   const filteredEntries = selectedCategories.length > 0
@@ -251,6 +275,14 @@ export default function ViewEntries() {
                             >
                               Edit
                             </a>
+                          )}
+                          {card.is_master_grimoire && card.user_id !== userId && (
+                            <button
+                              onClick={() => handleImport(card)}
+                              className="text-green-400 hover:underline"
+                            >
+                              Import (premium)
+                            </button>
                           )}
                         </div>
                       </div>

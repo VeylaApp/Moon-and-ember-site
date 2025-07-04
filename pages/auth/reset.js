@@ -7,6 +7,7 @@ import Layout from '@/components/Layout';
 export default function ResetPasswordPage() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [tokenChecked, setTokenChecked] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -70,22 +71,34 @@ export default function ResetPasswordPage() {
           {error && <p className="text-sm text-red-400 mb-4 text-center">{error}</p>}
           {tokenChecked && !error && (
             <form onSubmit={handleSubmit} className="space-y-3">
-              <input
-                type="password"
-                placeholder="New Password"
-                className="w-full px-3 py-2 text-sm rounded bg-slate-800 text-white"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-              <input
-                type="password"
-                placeholder="Confirm New Password"
-                className="w-full px-3 py-2 text-sm rounded bg-slate-800 text-white"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="New Password"
+                  className="w-full px-3 py-2 text-sm rounded bg-slate-800 text-white pr-10"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Confirm New Password"
+                  className="w-full px-3 py-2 text-sm rounded bg-slate-800 text-white pr-10"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                />
+              </div>
+              <label className="flex items-center text-xs text-ash-light space-x-2">
+                <input
+                  type="checkbox"
+                  checked={showPassword}
+                  onChange={() => setShowPassword(!showPassword)}
+                />
+                <span>Show Password</span>
+              </label>
               {password && confirmPassword && password !== confirmPassword && (
                 <p className="text-red-400 text-xs">Passwords do not match.</p>
               )}

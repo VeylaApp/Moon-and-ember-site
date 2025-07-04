@@ -1,7 +1,6 @@
-// /pages/createCard.js
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import  supabase  from '@/lib/supabase';
+import supabase from '@/lib/supabase';
 import Layout from '@/components/Layout';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -16,7 +15,6 @@ export default function CreateCard() {
   const [isPrivate, setIsPrivate] = useState(true);
   const [onHand, setOnHand] = useState(false);
   const [supplies, setSupplies] = useState(['']);
-  const [showSharedReminder, setShowSharedReminder] = useState(false);
   const [categoryId, setCategoryId] = useState(null);
 
   const decodedCategory = decodeURIComponent(category || '');
@@ -45,10 +43,13 @@ export default function CreateCard() {
   const handleSubmit = async (e, redirectToView = true) => {
     e.preventDefault();
 
-    if (!title) return alert('Title is required');
+    if (!title.trim()) return alert('Title is required');
+    if (!description.trim()) return alert('Description is required');
     if (!categoryId) return alert('Category not found.');
 
-    const { data: { session } } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
     if (!session) {
       alert('You must be logged in to create a card');
       return;
@@ -103,7 +104,7 @@ export default function CreateCard() {
         on_hand: !isSpellsCategory ? onHand : null,
         supplies: supplyData,
         private: isPrivate,
-         is_master_grimoire: !isPrivate,
+        is_master_grimoire: false,
       })
       .select()
       .single();
@@ -115,8 +116,28 @@ export default function CreateCard() {
     }
 
     if (!isPrivate) {
-      setShowSharedReminder(true);
-    } else if (redirectToView) {
+      const { error: shareError } = await supabase.from('cards').insert({
+        user_id: session.user.id,
+        category_id: categoryId,
+        title,
+        description,
+        tags,
+        image_url: imageUrl,
+        supplies: supplyData,
+        private: false,
+        is_master_grimoire: true,
+        review_status: 'pending',
+        original_card_id: newCard.id,
+      });
+
+      if (shareError) {
+        console.error('Error creating shared copy:', shareError);
+        alert('Card saved, but failed to create shared version.');
+        return;
+      }
+    }
+
+    if (redirectToView) {
       router.push(`/viewCard?id=${newCard.id}`);
     } else {
       router.push('/grimoire');
@@ -131,133 +152,71 @@ export default function CreateCard() {
 
   return (
     <Layout>
-      <div
-        className="min-h-screen bg-cover bg-center bg-no-repeat p-8 text-white"
-        style={{
-          backgroundImage: 'url("/images/page.png")',
-          backgroundSize: 'contain',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat',
-          backgroundColor: 'rgba(0,0,0,0.6)',
-          backgroundBlendMode: 'overlay',
-        }}
-      >
+      <div className="min-h-screen bg-cover bg-center bg-no-repeat p-8 text-white" style={{
+        backgroundImage: 'url("/images/page.png")',
+        backgroundSize: 'contain',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+        backgroundColor: 'rgba(0,0,0,0.6)',
+        backgroundBlendMode: 'overlay',
+      }}>
         <div className="max-w-xl mx-auto px-6 py-8">
           <h1 className="text-3xl font-header text-orange-ember mb-6 text-center">
             Create a New {decodedCategory} Entry
           </h1>
 
           <form className="space-y-4" onSubmit={(e) => handleSubmit(e, true)}>
-            <input
-              type="text"
-              placeholder="Title"
-              className="w-full p-2 rounded bg-black-veil text-white"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-            />
+            <input type="text" required placeholder="Title" className="w-full p-2 rounded bg-black-veil text-white" value={title} onChange={(e) => setTitle(e.target.value)} />
 
             {isSpellsCategory && (
               <div>
                 <label className="block text-sm mb-2">Supplies (up to 10)</label>
                 {supplies.map((supply, index) => (
-                  <input
-                    key={index}
-                    type="text"
-                    value={supply}
-                    onChange={(e) => {
-                      const updated = [...supplies];
-                      updated[index] = e.target.value;
-                      setSupplies(updated);
-                    }}
-                    className="w-full mb-2 p-2 rounded bg-black-veil text-white"
-                    placeholder={`Supply ${index + 1}`}
-                  />
+                  <input key={index} type="text" value={supply} onChange={(e) => {
+                    const updated = [...supplies];
+                    updated[index] = e.target.value;
+                    setSupplies(updated);
+                  }} className="w-full mb-2 p-2 rounded bg-black-veil text-white" placeholder={`Supply ${index + 1}`} />
                 ))}
                 {supplies.length < 10 && (
-                  <button
-                    type="button"
-                    onClick={() => setSupplies([...supplies, ''])}
-                    className="text-sm text-orange-ember hover:underline mt-2"
-                  >
+                  <button type="button" onClick={() => setSupplies([...supplies, ''])} className="text-sm text-orange-ember hover:underline mt-2">
                     + Add Supply
                   </button>
                 )}
               </div>
             )}
 
-            <textarea
-              placeholder="Description"
-              className="w-full p-2 rounded bg-black-veil text-white"
-              rows={9}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
-
-            <input
-              type="text"
-              placeholder="Tags (comma separated)"
-              className="w-full p-2 rounded bg-black-veil text-white"
-              value={tags}
-              onChange={(e) => setTags(e.target.value)}
-            />
-
-            <input
-              type="file"
-              accept="image/*"
-              className="block text-sm text-ash-light"
-              onChange={(e) => setImage(e.target.files[0])}
-            />
+            <textarea required placeholder="Description" className="w-full p-2 rounded bg-black-veil text-white" rows={9} value={description} onChange={(e) => setDescription(e.target.value)} />
+            <input type="text" placeholder="Tags (comma separated)" className="w-full p-2 rounded bg-black-veil text-white" value={tags} onChange={(e) => setTags(e.target.value)} />
+            <input type="file" accept="image/*" className="block text-sm text-ash-light" onChange={(e) => setImage(e.target.files[0])} />
 
             {!isSpellsCategory && (
               <label className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  checked={onHand}
-                  onChange={() => setOnHand(!onHand)}
-                />
+                <input type="checkbox" checked={onHand} onChange={() => setOnHand(!onHand)} />
                 <span>On Hand</span>
               </label>
             )}
 
             <label className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                checked={!isPrivate}
-                onChange={() => setIsPrivate(!isPrivate)}
-              />
+              <input type="checkbox" checked={!isPrivate} onChange={() => {
+                if (isPrivate) {
+                  const confirmed = window.confirm('You are about to submit this entry to the shared Master Grimoire. Continue?');
+                  if (!confirmed) return;
+                }
+                setIsPrivate(!isPrivate);
+              }} />
               <span>Mark as Shared</span>
             </label>
 
             <div className="flex flex-col md:flex-row md:space-x-4 space-y-4 md:space-y-0">
-              <button
-                type="submit"
-                className="px-6 py-2 font-header font-bold text-lg text-ash-light hover:shadow-[0_0_10px_2px_#204e39] transition-shadow rounded"
-              >
+              <button type="submit" className="px-6 py-2 font-header font-bold text-lg text-ash-light hover:shadow-[0_0_10px_2px_#204e39] transition-shadow rounded">
                 Save Entry
               </button>
-              <button
-                type="button"
-                onClick={(e) => handleSubmit(e, false)}
-                className="px-6 py-2 font-header font-bold text-lg text-ash-light hover:shadow-[0_0_10px_2px_#204e39] transition-shadow rounded"
-              >
+              <button type="button" onClick={(e) => handleSubmit(e, false)} className="px-6 py-2 font-header font-bold text-lg text-ash-light hover:shadow-[0_0_10px_2px_#204e39] transition-shadow rounded">
                 Save & Create Another
               </button>
             </div>
           </form>
-
-          {showSharedReminder && (
-            <div className="mt-6 bg-orange-ember/90 text-white p-4 rounded shadow-md text-center">
-              <p className="mb-2 font-bold">
-                This card has been marked shared and will be submitted to the master grimoire for review by admins.
-              </p>
-              <button
-                onClick={() => router.push('/grimoire')}
-                className="text-white underline"
-              >
-                OK, return to Grimoire
-              </button>
-            </div>
-          )}
         </div>
       </div>
     </Layout>

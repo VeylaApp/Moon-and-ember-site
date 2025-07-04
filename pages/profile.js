@@ -1,4 +1,3 @@
-// pages/profile.js
 import { useState, useEffect } from 'react';
 import supabase from '@/lib/supabase';
 import { useRouter } from 'next/router';
@@ -17,13 +16,19 @@ export default function ProfilePage() {
     moon_sign: '',
     rising_sign: '',
     book_title: '',
-    email: '', // Keep email in form state
+    email: '',
+    facebook: '',
+    instagram: '',
+    tiktok: '',
+    other: '',
+    website: '',
+    spiritual_practice: '',
   });
   const [avatarFile, setAvatarFile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState(null);
   const [userId, setUserId] = useState(null);
-  const [userEmail, setUserEmail] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -36,7 +41,6 @@ export default function ProfilePage() {
 
       const user = session.user;
       setUserId(user.id);
-      setUserEmail(user.email); // User email from auth.user
 
       const { data, error } = await supabase
         .from('profiles')
@@ -45,19 +49,33 @@ export default function ProfilePage() {
         .single();
 
       if (data) {
+        setIsAdmin(data.role === 'admin');
         setForm({
-          ...form,
-          ...data,
-          // Ensure email is always taken from the session user, not profiles table if it exists there
-          email: user.email, 
-          share_birthday: data.share_birthday || false,
+          username: data.username || '',
+          first_name: data.first_name || '',
+          last_name: data.last_name || '',
+          avatar_url: data.avatar_url || '',
+          location: data.location || '',
+          birthday: data.birthday || '',
+          share_birthday: data.share_birthday ?? false,
+          sun_sign: data.sun_sign || '',
+          moon_sign: data.moon_sign || '',
+          rising_sign: data.rising_sign || '',
+          book_title: data.book_title || '',
+          email: user.email,
+          facebook: data.facebook || '',
+          instagram: data.instagram || '',
+          tiktok: data.tiktok || '',
+          other: data.other || '',
+          website: data.website || '',
+          spiritual_practice: data.spiritual_practice || '',
         });
       } else {
-        // If no profile exists, initialize with user ID and email
-        setForm((prev) => ({ 
-          ...prev, 
-          id: user.id, // Initialize id for new profiles
-          email: user.email // Set email for new profiles
+        setIsAdmin(false);
+        setForm((prev) => ({
+          ...prev,
+          id: user.id,
+          email: user.email,
         }));
       }
 
@@ -65,9 +83,8 @@ export default function ProfilePage() {
     };
 
     checkSessionAndFetchProfile();
-  }, [router]); // Added router to dependency array as it's used in useEffect
+  }, [router]);
 
-  // Keep handleChange for other fields, but username won't trigger it
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setForm((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
@@ -77,24 +94,17 @@ export default function ProfilePage() {
     const file = e.target.files[0];
     if (file && file.size <= 5 * 1024 * 1024) {
       setAvatarFile(file);
-      setMessage(null); // Clear previous file size message if valid
+      setMessage(null);
     } else {
-      setAvatarFile(null); // Clear file if invalid
+      setAvatarFile(null);
       setMessage('❌ File must be under 5MB');
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setMessage(null); // Clear previous messages
+    setMessage(null);
     setLoading(true);
-
-    // Removed client-side validation for username length as it's no longer editable
-    // if (form.username.length < 3 || form.username.length > 20) {
-    //   setMessage('❌ Username must be between 3 and 20 characters.');
-    //   setLoading(false);
-    //   return; // Stop form submission
-    // }
 
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
     if (sessionError || !session) {
@@ -123,28 +133,23 @@ export default function ProfilePage() {
         setMessage('❌ Failed to get public avatar URL');
         setLoading(false);
         return;
-      // !form.email && setMessage('❌ Email is required for profile update.'); // This line was misplaced, moved inside if block or remove based on need. Assuming it's not needed here as email is readOnly
       }
+
       avatar_url = urlData.publicUrl;
     }
-    // Moved the email check outside the avatar upload logic
+
     if (!form.email) {
       setMessage('❌ Email is required for profile update.');
       setLoading(false);
       return;
     }
 
-
     const upsertData = {
       id: user.id,
       ...form,
       avatar_url,
-      // email is now explicitly kept in upsertData as per your requirement
+      email: user.email,
     };
-    
-    // Ensure email is taken from session.user initially and always,
-    // not relying on the form state's initial empty string for email on new profiles
-    upsertData.email = user.email;
 
     const { error } = await supabase.from('profiles').upsert(upsertData);
 
@@ -153,6 +158,7 @@ export default function ProfilePage() {
     } else {
       setMessage('✅ Profile updated successfully!');
     }
+
     setLoading(false);
   };
 
@@ -171,7 +177,7 @@ export default function ProfilePage() {
           </p>
         </div>
 
-        {userEmail === 'kellipinar@outlook.com' && (
+        {isAdmin && (
           <div className="text-center mb-4">
             <button
               onClick={() => router.push('/admin/AdminTools')}
@@ -205,16 +211,12 @@ export default function ProfilePage() {
               className="w-full p-3 rounded-lg bg-slate-700 text-white opacity-70 cursor-not-allowed"
             />
 
-            <label className="block text-sm text-ash-light">
-              Username
-              {/* Removed helper text: <span className="text-gray-400 text-xs">(3-20 characters)</span> */}
-            </label>
+            <label className="block text-sm text-ash-light">Username</label>
             <input
               name="username"
               value={form.username}
-              readOnly // Made username read-only
-              className="w-full p-3 rounded-lg bg-slate-700 text-white opacity-70 cursor-not-allowed" // Added styling for read-only
-              // Removed onChange, required, minLength, maxLength as it's read-only
+              readOnly
+              className="w-full p-3 rounded-lg bg-slate-700 text-white opacity-70 cursor-not-allowed"
             />
 
             <label className="block text-sm text-ash-light">Custom Grimoire Name</label>
@@ -261,10 +263,35 @@ export default function ProfilePage() {
               ))}
             </select>
 
+            <hr className="border-white/20 my-4" />
+            <h2 className="text-xl font-bold text-orange-ember">Optional Social Links</h2>
+
+            <label className="block text-sm text-ash-light">Facebook Handle</label>
+            <input name="facebook" value={form.facebook} onChange={handleChange} placeholder="@yourhandle" className="w-full p-3 rounded-lg bg-slate-800 text-white" />
+
+            <label className="block text-sm text-ash-light">Instagram Handle</label>
+            <input name="instagram" value={form.instagram} onChange={handleChange} placeholder="@yourhandle" className="w-full p-3 rounded-lg bg-slate-800 text-white" />
+
+            <label className="block text-sm text-ash-light">TikTok Handle</label>
+            <input name="tiktok" value={form.tiktok} onChange={handleChange} placeholder="@yourhandle" className="w-full p-3 rounded-lg bg-slate-800 text-white" />
+
+            <label className="block text-sm text-ash-light">Other Social Media</label>
+            <input name="other" value={form.other} onChange={handleChange} placeholder="Optional link or handle" className="w-full p-3 rounded-lg bg-slate-800 text-white" />
+
+            <label className="block text-sm text-ash-light">Website</label>
+            <input name="website" value={form.website} onChange={handleChange} placeholder="https://yourwebsite.com" className="w-full p-3 rounded-lg bg-slate-800 text-white" />
+
+            <label className="block text-sm text-ash-light">Spiritual Path/Practice</label>
+            <input
+              name="spiritual_practice"
+              value={form.spiritual_practice}
+              onChange={handleChange}
+              placeholder="e.g., Witch, Pagan, Wiccan, Christian, ect."
+              className="w-full p-3 rounded-lg bg-slate-800 text-white"
+            />
+
             <div>
-              <label className="block mb-2 text-sm text-ash-light font-semibold">
-                Upload Avatar (max 5MB):
-              </label>
+              <label className="block mb-2 text-sm text-ash-light font-semibold">Upload Avatar (max 5MB):</label>
               <input type="file" accept="image/*" onChange={handleAvatarChange} className="w-full text-sm text-white" />
               {form.avatar_url && (
                 <img src={form.avatar_url} alt="avatar" className="mt-3 h-28 w-28 rounded-full object-cover border-2 border-orange-ember shadow" />

@@ -1,131 +1,196 @@
-import { useState } from 'react';
-import dynamic from 'next/dynamic';
-import withAdminAuth from '@/lib/withAdminAuth';
-import AdminLayout from '@/components/AdminLayout';
-import { createClient } from '@supabase/supabase-js';
-import 'react-quill/dist/quill.snow.css';
+'use client'
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import supabase from '@/lib/supabase'
+import AdminLayout from '@/components/AdminLayout'
 
-const ReactQuill = dynamic(() => import('react-quill'), { ssr: false });
+export default function AdminBlogLanding() {
+  const router = useRouter()
+  const [publishedBlogs, setPublishedBlogs] = useState([])
+  const [draftBlogs, setDraftBlogs] = useState([])
+  const [rejectionNotes, setRejectionNotes] = useState({})
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
+  useEffect(() => {
+    fetchBlogs()
+  }, [])
 
-function BlogAdmin() {
-  const [form, setForm] = useState({
-    title: '',
-    slug: '',
-    excerpt: '',
-    content: '',
-    published_at: '',
-    status: 'draft',
-    tags: '',
-    cover_image_url: ''
-  });
+  const fetchBlogs = async () => {
+    const { data: published, error: pubErr } = await supabase
+      .from('blog_posts')
+      .select('id, title, created_at')
+      .eq('status', 'published')
+      .order('created_at', { ascending: false })
+      .limit(10)
 
-  const [file, setFile] = useState(null);
-  const [message, setMessage] = useState(null);
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleFileChange = (e) => {
-    setFile(e.target.files[0]);
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    let coverImagePath = '/images/logo.jpg'; // default
-
-    if (file) {
-      const fileName = `${Date.now()}-${file.name}`;
-      const filePath = `blog/${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('images')
-        .upload(filePath, file, {
-          contentType: file.type,
-        });
-
-      if (uploadError) {
-        setMessage(`❌ Upload failed: ${uploadError.message}`);
-        return;
-      }
-
-      const { data } = supabase.storage.from('images').getPublicUrl(filePath);
-      coverImagePath = data.publicUrl;
-    }
-
-    const cleanedForm = {
-      ...form,
-      tags: form.tags.split(',').map(tag => tag.trim()).join(', '),
-      cover_image_url: coverImagePath
-    };
-
-    const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/blog_posts`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
-        Prefer: 'return=representation'
-      },
-      body: JSON.stringify(cleanedForm)
-    });
-
-    const result = await res.json();
-    if (res.ok) {
-      setMessage('✅ Blog post published!');
-      setForm({
-        title: '',
-        slug: '',
-        excerpt: '',
-        content: '',
-        published_at: '',
-        status: 'draft',
-        tags: '',
-        cover_image_url: ''
-      });
-      setFile(null);
+    if (pubErr) {
+      console.error('Error fetching published blogs:', pubErr)
     } else {
-      setMessage(`❌ Error: ${result.message || 'Failed to publish post'}`);
+      setPublishedBlogs(published)
     }
-  };
+
+    const { data: drafts, error: draftErr } = await supabase
+      .from('blog_posts')
+      .select('id, title, created_at, rejection_notes')
+      .eq('status', 'draft')
+      .order('created_at', { ascending: false })
+
+    if (draftErr) {
+      console.error('Error fetching drafts:', draftErr)
+    } else {
+      setDraftBlogs(drafts)
+      const initialNotes = {}
+      drafts.forEach(d => {
+        initialNotes[d.id] = d.rejection_notes || ''
+      })
+      setRejectionNotes(initialNotes)
+    }
+  }
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Delete this post?')) return
+    const { error } = await supabase.from('blog_posts').delete().eq('id', id)
+    if (error) {
+      alert('Failed to delete post')
+      console.error(error)
+    } else {
+      fetchBlogs()
+    }
+  }
+
+  const handleStatusChange = async (id, newStatus, notes = '') => {
+    console.log('🟡 Attempting to update blog post...')
+    console.log('ID:', id)
+    console.log('New Status:', newStatus)
+    console.log('Rejection Notes:', notes)
+
+    const updateFields = { status: newStatus }
+    if (newStatus === 'rejected') {
+      updateFields.rejection_notes = notes || ''
+    }
+
+    // Check if the row is being matched
+    const { data: matchCheck, error: matchErr } = await supabase
+      .from('blog_posts')
+      .select('*')
+      .eq('id', id)
+
+    console.log('🔍 Matching row:', matchCheck)
+
+    if (matchErr) {
+      console.error('Error checking matching row:', matchErr)
+      return
+    }
+
+    const { data, error } = await supabase
+      .from('blog_posts')
+      .update(updateFields)
+      .eq('id', id)
+
+    if (error) {
+      console.error('❌ Supabase update error:', error)
+      alert('Failed to update blog status')
+    } else {
+      console.log('✅ Blog post updated:', data)
+      fetchBlogs()
+    }
+  }
+
+  const handleNoteChange = (id, value) => {
+    setRejectionNotes(prev => ({ ...prev, [id]: value }))
+  }
 
   return (
     <AdminLayout>
-      <div className="max-w-2xl mx-auto p-6">
-        <h1 className="text-3xl font-bold mb-6 text-orange-ember">Create a Blog Post</h1>
-        {message && <p className="mb-4 text-white bg-midnight/70 p-2 rounded">{message}</p>}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <input type="text" name="title" value={form.title} onChange={handleChange} placeholder="Title" required className="w-full p-2 rounded bg-slate-800 text-white" />
-          <input type="text" name="slug" value={form.slug} onChange={handleChange} placeholder="Slug" required className="w-full p-2 rounded bg-slate-800 text-white" />
-          <input type="text" name="excerpt" value={form.excerpt} onChange={handleChange} placeholder="Excerpt" className="w-full p-2 rounded bg-slate-800 text-white" />
-          
-          {/* 🖋 Rich Text Editor */}
-          <ReactQuill
-            value={form.content}
-            onChange={(value) => setForm((prev) => ({ ...prev, content: value }))}
-            className="bg-white text-black rounded"
-            theme="snow"
-          />
+      <div className="p-6 max-w-4xl mx-auto space-y-10">
+        {/* Header */}
+        <div className="flex justify-between items-center">
+          <h1 className="text-2xl font-bold text-white">Manage Blog Posts</h1>
+          <button
+            onClick={() => router.push('/admin/createBlog')}
+            className="bg-green-600 text-white px-4 py-2 rounded hover:shadow-[0_0_10px_2px_#204e39]"
+          >
+            Post New Blog
+          </button>
+        </div>
 
-          <input type="text" name="tags" value={form.tags} onChange={handleChange} placeholder="Tags (comma-separated)" className="w-full p-2 rounded bg-slate-800 text-white" />
-          <input type="date" name="published_at" value={form.published_at} onChange={handleChange} className="w-full p-2 rounded bg-slate-800 text-white" />
-          <select name="status" value={form.status} onChange={handleChange} className="w-full p-2 rounded bg-slate-800 text-white">
-            <option value="draft">Draft</option>
-            <option value="published">Published</option>
-          </select>
-          <input type="file" accept="image/*" onChange={handleFileChange} className="w-full p-2 rounded bg-slate-800 text-white" />
-          <button type="submit" className="bg-orange-ember text-white px-4 py-2 rounded hover:bg-orange-600">Publish</button>
-        </form>
+        {/* Published Blogs */}
+        <section>
+          <h2 className="text-xl font-semibold mb-2 text-white">Last 10 Published Blogs</h2>
+          <ul className="space-y-2">
+            {publishedBlogs.map(blog => (
+              <li key={blog.id} className="flex justify-between items-center border p-2 rounded">
+                <span className="text-white">{blog.title}</span>
+                <div className="space-x-3">
+                  <button
+                    onClick={() => router.push(`/admin/edit/${blog.id}`)}
+                    className="text-blue-400 hover:underline"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDelete(blog.id)}
+                    className="text-red-400 hover:underline"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <button
+            onClick={() => router.push('/admin/viewBlogs')}
+            className="mt-4 text-sm text-indigo-400 hover:underline"
+          >
+            View All Blogs →
+          </button>
+        </section>
+
+        {/* Draft Review */}
+        <section>
+          <h2 className="text-xl font-semibold mb-2 text-white">Review Draft Blogs</h2>
+          {draftBlogs.length === 0 ? (
+            <p className="text-gray-300">No drafts to review.</p>
+          ) : (
+            <ul className="space-y-4">
+              {draftBlogs.map(blog => (
+                <li key={blog.id} className="border p-4 rounded shadow-sm">
+                  <div className="flex justify-between items-start gap-4">
+                    <div className="w-full">
+                      <h3 className="text-lg font-semibold text-white">{blog.title}</h3>
+                      <p className="text-sm text-gray-400">
+                        Created: {new Date(blog.created_at).toLocaleDateString()}
+                      </p>
+                      <label className="block mt-2 text-sm text-white">Rejection Notes:</label>
+                      <textarea
+                        value={rejectionNotes[blog.id]}
+                        onChange={(e) => handleNoteChange(blog.id, e.target.value)}
+                        placeholder="Add rejection reason here..."
+                        className="w-full mt-1 p-2 border rounded text-black"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-2 min-w-[100px]">
+                      <button
+                        onClick={() => handleStatusChange(blog.id, 'published')}
+                        className="text-green-400 hover:underline"
+                      >
+                        Approve
+                      </button>
+                      <button
+                        onClick={() =>
+                          handleStatusChange(blog.id, 'rejected', rejectionNotes[blog.id])
+                        }
+                        className="text-red-400 hover:underline"
+                      >
+                        Reject
+                      </button>
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
       </div>
     </AdminLayout>
-  );
+  )
 }
-
-export default withAdminAuth(BlogAdmin);

@@ -1,4 +1,3 @@
-// pages/admin/profile-edit.js
 import { useState, useEffect } from 'react';
 import supabase from '@/lib/supabase';
 import AdminLayout from '@/components/AdminLayout';
@@ -63,7 +62,7 @@ function AdminProfileEditor() {
 
   return (
     <AdminLayout>
-      <div className="ml-52 pt-16 w-full max-w-4xl mx-auto p-6 bg-black-veil text-white">
+      <div className="ml-52 pt-16 w-full max-w-5xl mx-auto p-6 bg-black-veil text-white">
         <h1 className="text-3xl font-bold mb-4">Admin Profile Editor</h1>
 
         <div className="mb-4 p-4 bg-orange-200 text-black rounded shadow-md">
@@ -73,7 +72,7 @@ function AdminProfileEditor() {
         <select
           value={selectedId}
           onChange={(e) => setSelectedId(e.target.value)}
-          className="w-full p-2 mb-4 text-black"
+          className="w-full p-2 mb-4 text-black rounded"
         >
           <option value="">Select a user</option>
           {profiles.map((p) => (
@@ -82,11 +81,11 @@ function AdminProfileEditor() {
         </select>
 
         {selectedId && (
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-midnight/50 p-6 rounded-lg shadow-inner">
             <input type="hidden" name="id" value={form.id || ''} />
 
             {form.avatar_url && (
-              <div className="flex items-center space-x-4">
+              <div className="md:col-span-2 flex items-center space-x-4">
                 <img
                   src={form.avatar_url}
                   alt="avatar thumbnail"
@@ -101,13 +100,13 @@ function AdminProfileEditor() {
 
               if (key === 'role') {
                 return (
-                  <div key={key}>
-                    <label className="block text-sm capitalize">Role</label>
+                  <div key={key} className="col-span-1">
+                    <label className="block text-sm font-semibold capitalize mb-1">Role</label>
                     <select
                       name="role"
                       value={value || ''}
                       onChange={handleChange}
-                      className="w-full p-2 text-black"
+                      className="w-full p-2 text-black rounded"
                     >
                       <option value="">Select Role</option>
                       {roles.map((r) => (
@@ -118,25 +117,43 @@ function AdminProfileEditor() {
                 );
               }
 
+              if (typeof value === 'boolean') {
+                return (
+                  <div key={key} className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      name={key}
+                      checked={!!value}
+                      onChange={handleChange}
+                    />
+                    <label className="text-sm capitalize">{key.replace('_', ' ')}</label>
+                  </div>
+                );
+              }
+
               return (
-                <div key={key}>
-                  <label className="block text-sm capitalize">{key.replace('_', ' ')}</label>
+                <div key={key} className="col-span-1">
+                  <label className="block text-sm font-semibold capitalize mb-1">
+                    {key.replace(/_/g, ' ')}
+                  </label>
                   <input
                     name={key}
                     value={value || ''}
                     onChange={handleChange}
-                    className="w-full p-2 text-black"
+                    className="w-full p-2 text-black rounded"
                   />
                 </div>
               );
             })}
 
-            <div className="flex space-x-4">
-              <button type="submit" className="bg-green-600 px-4 py-2 rounded">Save</button>
+            <div className="md:col-span-2 flex space-x-4 mt-4">
+              <button type="submit" className="bg-green-600 px-4 py-2 rounded text-white hover:bg-green-700">
+                Save
+              </button>
               <button
                 type="button"
                 onClick={handleDelete}
-                className="bg-red-600 px-4 py-2 rounded"
+                className="bg-red-600 px-4 py-2 rounded text-white hover:bg-red-700"
               >
                 Delete User
               </button>
@@ -144,7 +161,9 @@ function AdminProfileEditor() {
           </form>
         )}
 
-        {message && <p className="mt-4 text-sm bg-slate-700 p-2 rounded">{message}</p>}
+        {message && (
+          <p className="mt-4 text-sm bg-slate-700 p-3 rounded shadow">{message}</p>
+        )}
 
         {showAuthWarning && (
           <div className="mt-4 bg-yellow-300 text-black p-4 rounded shadow">

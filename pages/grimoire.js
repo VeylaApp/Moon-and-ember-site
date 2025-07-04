@@ -17,10 +17,7 @@ export default function Grimoire() {
     const init = async () => {
       try {
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        console.log('Session:', session);
-
         if (sessionError || !session) {
-          console.warn('No session found. Redirecting...');
           router.replace('/auth');
           return;
         }
@@ -38,7 +35,6 @@ export default function Grimoire() {
             router.replace('/profile');
             return;
           }
-          console.error('Profile fetch error:', error);
           setLoading(false);
           return;
         }
@@ -63,8 +59,7 @@ export default function Grimoire() {
 
     const fetchCategories = async () => {
       const { data, error } = await supabase.from('categories').select('name');
-      if (error) console.error('Error fetching categories:', error);
-      else setCategories(data.map(cat => cat.name));
+      if (!error) setCategories(data.map(cat => cat.name));
     };
 
     init();
@@ -101,35 +96,44 @@ export default function Grimoire() {
   if (loading) {
     return (
       <Layout>
-        <div className="min-h-screen flex items-center justify-center text-white font-header">Loading Grimoire...</div>
+        <div className="min-h-screen flex items-center justify-center font-header text-purple-moon">
+          Loading Grimoire...
+        </div>
       </Layout>
     );
   }
 
   return (
     <Layout>
-      <div className="relative w-full min-h-screen bg-cover bg-center text-white"
+      <div
+        className="relative w-full min-h-screen bg-cover bg-center"
         style={{
           backgroundImage: 'url("/images/cover.png")',
           backgroundSize: 'contain',
-          backgroundPosition: 'center center',
+          backgroundPosition: 'top center',
           backgroundRepeat: 'no-repeat',
-        }}>
-        <div className="absolute w-full text-center" style={{ top: '8%' }}>
-          <h1 className="text-5xl font-header font-bold text-purple-moon">{userData.username}</h1>
-          <h2 className="text-4xl font-header font-bold text-purple-moon mb-8">{userData.title}</h2>
+        }}
+      >
+        {/* Soft Overlay */}
+        <div className="absolute inset-0 bg-black bg-opacity-50 z-0" />
 
-          <div className="text-5x1 flex flex-col font-header items-center space-y-6 mt-[380px]">
-            <button onClick={() => setShowModal(true)} className="btn-primary">Create new entry</button>
-            <button onClick={() => router.push('/inventory')} className="btn-primary">View my inventory</button>
-            <button onClick={() => router.push('/entries?mode=my')} className="btn-primary">View My Entries</button>
-            <button onClick={() => router.push('/entries?mode=master')} className="btn-primary">View Master Grimoire</button>
-            <button onClick={() => router.push('/search')} className="btn-primary">Search Entries</button>
-            <button disabled className="btn-primary opacity-75 cursor-not-allowed">View your Shopping List (coming soon)</button>
-            <button disabled className="btn-primary opacity-75 cursor-not-allowed">Create PDF (coming soon)</button>
+        {/* Main Content */}
+        <div className="relative z-10 flex flex-col items-center px-4 pt-12 sm:pt-16 text-center">
+          <h1 className="text-4xl sm:text-5xl font-header font-bold text-purple-moon">{userData.username}</h1>
+          <h2 className="text-2xl sm:text-4xl font-header font-bold text-purple-moon mt-2 mb-12">{userData.title}</h2>
+
+          <div className="w-full max-w-md space-y-4 sm:space-y-5 font-header">
+            <button onClick={() => setShowModal(true)} className="btn-primary w-full text-xl py-3">Create new entry</button>
+            <button onClick={() => router.push('/inventory')} className="btn-primary w-full text-xl py-3">View my inventory</button>
+            <button onClick={() => router.push('/entries?mode=my')} className="btn-primary w-full text-xl py-3">View My Entries</button>
+            <button onClick={() => router.push('/entries?mode=master')} className="btn-primary w-full text-xl py-3">View Master Grimoire</button>
+            <button onClick={() => router.push('/search')} className="btn-primary w-full text-xl py-3">Search Entries</button>
+            <button disabled className="btn-primary w-full text-xl py-3 opacity-75 cursor-not-allowed">View your Shopping List (coming soon)</button>
+            <button disabled className="btn-primary w-full text-xl py-3 opacity-75 cursor-not-allowed">Create PDF (coming soon)</button>
           </div>
         </div>
 
+        {/* Modal */}
         {showModal && (
           <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
             <div className="bg-ash-light rounded-lg shadow-xl p-6 max-w-md w-full text-center">
@@ -145,7 +149,9 @@ export default function Grimoire() {
                   </button>
                 ))}
               </div>
-              <button onClick={() => setShowModal(false)} className="mt-6 text-sm text-gray-500 hover:underline">Cancel</button>
+              <button onClick={() => setShowModal(false)} className="mt-6 text-sm font-header text-gray-500 hover:underline">
+                Cancel
+              </button>
             </div>
           </div>
         )}

@@ -1,9 +1,8 @@
-// pages/journal.js
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '@/components/Layout';
 import ProtectedRoute from '@/components/ProtectedRoute';
-import  supabase  from '@/lib/supabase';
+import supabase from '@/lib/supabase';
 
 function JournalLandingPage() {
   const [username, setUsername] = useState('My');
@@ -39,40 +38,41 @@ function JournalLandingPage() {
 
   return (
     <Layout>
-      <div className="relative w-full min-h-screen bg-cover bg-center text-white"
+      <div
+        className="relative w-full min-h-screen bg-cover bg-center"
         style={{
-          backgroundImage: 'url("/images/journalcover.jpg")',
+          backgroundImage: 'url("/images/cover.png")',
           backgroundSize: 'contain',
-          backgroundPosition: 'center center',
+          backgroundPosition: 'top center',
           backgroundRepeat: 'no-repeat',
-          height: 'auto',
-        }}>
-        <div className="absolute w-full text-center" style={{ top: '12%' }}>
-          <h1 className="text-5xl font-header font-bold text-purple-moon text-center">
-            {username}
-          </h1>
-          <h2 className="text-4xl font-header font-bold text-purple-moon mb-8 text-center">
-            Journal
-          </h2>
+        }}
+      >
+        {/* Soft Overlay */}
+        <div className="absolute inset-0 bg-black bg-opacity-50 z-0" />
 
-          <div className="flex flex-col items-center space-y-4 mt-[380px]">
+        {/* Main Content */}
+        <div className="relative z-10 flex flex-col items-center px-4 pt-12 sm:pt-16 text-center">
+          <h1 className="text-4xl sm:text-5xl font-header font-bold text-purple-moon">{username}</h1>
+          <h2 className="text-2xl sm:text-4xl font-header font-bold text-purple-moon mt-2 mb-20">Journal</h2>
+
+          <div className="w-full max-w-md space-y-5 font-header">
             <button
               onClick={() => router.push('/createJournalEntry')}
-              className="text-ash-light font-bold px-4 py-1 rounded-md font-header text-lg hover:shadow-[0_0_10px_2px_#204e39] transition-shadow duration-300"
+              className="btn-primary w-full text-xl py-3"
             >
               Create Journal Entry
             </button>
 
             <button
               onClick={() => router.push('/viewJournalEntries')}
-              className="text-ash-light font-bold px-4 py-1 rounded-md font-header text-lg hover:shadow-[0_0_10px_2px_#204e39] transition-shadow duration-300"
+              className="btn-primary w-full text-xl py-3"
             >
               View/Edit Journal Entries
             </button>
 
             <button
               disabled
-              className="text-ash-light font-bold px-4 py-1 rounded-md font-header text-lg opacity-50 cursor-not-allowed"
+              className="btn-primary w-full text-xl py-3 opacity-50 cursor-not-allowed"
             >
               Create PDF (coming soon)
             </button>
