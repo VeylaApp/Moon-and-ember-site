@@ -62,17 +62,10 @@ export default function ViewEntries() {
         if (query.mode === 'master') {
           supabaseQuery = supabaseQuery.eq('is_master_grimoire', true).eq('review_status', 'approved');
         } else if (query.mode === 'my') {
-          supabaseQuery = supabaseQuery
-            .eq('user_id', session.user.id)
-            .eq('is_master_grimoire', false);
+          supabaseQuery = supabaseQuery.eq('user_id', session.user.id).eq('is_master_grimoire', false);
         } else if (query.mode === 'search' && query.q) {
           const searchTerm = `%${query.q}%`;
-          supabaseQuery = supabaseQuery.or(`
-            title.ilike.${searchTerm},
-            description.ilike.${searchTerm},
-            tags.ilike.${searchTerm},
-            supplies.ilike.${searchTerm}
-          `);
+          supabaseQuery = supabaseQuery.ilike('supplies', searchTerm);
           setSearchInput(query.q);
           setInitialSearch(false);
         }
@@ -81,14 +74,7 @@ export default function ViewEntries() {
         if (error) {
           console.error('Error fetching cards:', error);
         } else {
-          let filteredData = data;
-          if (query.mode === 'search' && query.q) {
-            const lowerQ = query.q.toLowerCase();
-            filteredData = data.filter(card =>
-              card.categories?.name?.toLowerCase().includes(lowerQ)
-            );
-          }
-          setEntries(filteredData);
+          setEntries(data);
         }
       }
 
@@ -131,11 +117,8 @@ export default function ViewEntries() {
       on_hand: null,
     });
 
-    if (error) {
-      alert('Failed to import entry.');
-    } else {
-      alert('Entry imported to your Grimoire!');
-    }
+    if (error) alert('Failed to import entry.');
+    else alert('Entry imported to your Grimoire!');
   };
 
   const filteredEntries = selectedCategories.length > 0
@@ -161,14 +144,7 @@ export default function ViewEntries() {
   return (
     <Layout>
       <div className="min-h-screen bg-cover bg-center bg-no-repeat p-8 text-white"
-        style={{
-          backgroundImage: 'url("/images/page.png")',
-          backgroundSize: 'contain',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat',
-          backgroundColor: 'rgba(0,0,0,0.6)',
-          backgroundBlendMode: 'overlay',
-        }}>
+>
         <div className="max-w-xl mx-auto p-6 rounded-lg backdrop-blur-md">
           <h1 className="text-3xl font-header text-orange-ember mb-6 text-center">
             {query.mode === 'master' ? 'Shared Master Grimoire'
@@ -176,24 +152,6 @@ export default function ViewEntries() {
               : query.mode === 'search' ? `Search Results for "${query.q || ''}"`
               : 'All Entries (Admin View)'}
           </h1>
-
-          {query.mode === 'search' && (
-            <form onSubmit={handleSearchSubmit} className="mb-6 flex gap-2">
-              <input
-                type="text"
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                placeholder="Search title, description, tags, supplies, category..."
-                className="flex-1 p-2 rounded bg-black-veil text-white"
-              />
-              <button
-                type="submit"
-                className="bg-orange-ember px-4 py-2 rounded text-white hover:bg-orange-600"
-              >
-                Search
-              </button>
-            </form>
-          )}
 
           {(query.mode !== 'search' || !initialSearch) && (
             <>
@@ -209,7 +167,6 @@ export default function ViewEntries() {
                     <option value="category">Category</option>
                   </select>
                 </div>
-
                 <div className="flex justify-between items-center mb-2">
                   <p className="font-header">Filter by Category:</p>
                   <div className="space-x-2 text-sm">
@@ -217,7 +174,6 @@ export default function ViewEntries() {
                     <button onClick={handleSelectNone} className="underline hover:text-orange-ember">Select None</button>
                   </div>
                 </div>
-
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   {allCategories.map(cat => (
                     <label key={cat} className="flex items-center space-x-2">
@@ -231,7 +187,6 @@ export default function ViewEntries() {
                   ))}
                 </div>
               </div>
-
               {sortedEntries().length === 0 ? (
                 <p className="text-center text-ash-light">No entries found.</p>
               ) : (
@@ -244,8 +199,20 @@ export default function ViewEntries() {
                         className="w-16 h-16 object-cover rounded"
                       />
                       <div className="flex-1">
-                        <h2 className="text-xl font-header text-gold-aura mb-1">
-                          {categoryIcons[card.categories?.name?.trim()] || '📦'} {card.categories?.name || 'Uncategorized'} - {card.title}
+                        <h2 className="text-xl font-header text-gold-aura mb-1 flex flex-wrap items-center gap-2">
+                          {categoryIcons[card.categories?.name?.trim()] || '📦'}
+                          <span>{card.categories?.name || 'Uncategorized'} - {card.title}</span>
+                          {card.categories?.name?.trim() !== 'Spells and Rituals' && (
+                            <a
+                              href={`/entries?mode=search&q=${encodeURIComponent(card.title)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-ash-light underline hover:text-orange-ember ml-2"
+                              title={`Search spells and rituals related to \"${card.title}\"`}
+                            >
+                              Search for spells
+                            </a>
+                          )}
                         </h2>
                         <p className="text-sm text-white/70 mb-1 italic flex items-center gap-2">
                           {card.profiles?.avatar_url && (
@@ -260,10 +227,9 @@ export default function ViewEntries() {
                         <p className="text-white text-sm mb-2">
                           {card.description?.slice(0, 120)}{card.description?.length > 120 ? '...' : ''}
                         </p>
-
                         <div className="flex gap-4 text-sm">
                           <a
-                            href={`/view-entry?id=${card.id}`}
+                            href={`/viewCard?id=${card.id}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-ash-light underline hover:text-orange-ember"

@@ -1,9 +1,9 @@
-import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
-import  supabase  from '@/lib/supabase';
+import { useRouter } from 'next/router';
+import supabase from '@/lib/supabase';
 import Layout from '@/components/Layout';
 
-export default function ViewEntry() {
+export default function ViewCard() {
   const router = useRouter();
   const { id } = router.query;
 
@@ -47,7 +47,7 @@ export default function ViewEntry() {
       <div
         className="min-h-screen bg-cover bg-center bg-no-repeat p-8 text-white"
         style={{
-          backgroundImage: 'url(\"/images/page.png\")',
+          backgroundImage: 'url("/images/page.png")',
           backgroundSize: 'contain',
           backgroundPosition: 'center',
           backgroundRepeat: 'no-repeat',
