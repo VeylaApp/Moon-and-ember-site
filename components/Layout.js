@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import supabase from '@/lib/supabase'; // ✅ use shared instance
+import supabase from '@/lib/supabase';
 
 export default function Layout({ children }) {
   const [session, setSession] = useState(null);
@@ -62,50 +62,62 @@ export default function Layout({ children }) {
               <Link href="/grimoire">Grimoire</Link>
               <Link href="/journal">Journal</Link>
               <Link href="https://forum.moonandembers.com">Forum</Link>
+              <Link href="/calendar">Calendar</Link>
               <Link href="/blog">Blog</Link>
               <Link href="/about">About</Link>
               <Link href="/contact">Contact</Link>
-              <a
-                href="/beta-test"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-orange-ember text-sm hover:underline"
-              >
-                Beta Test
-              </a>
 
-              {session ? (
-                <div className="flex items-center space-x-3 ml-4">
-                  <a
-                    href="/reportIssue"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-orange-ember hover:underline"
-                  >
-                    Report Issue
-                  </a>
-                  <button
-                    onClick={handleSignOut}
+              {/* Right Side: Report Issue + QR + Auth */}
+              <div className="flex items-center space-x-4 ml-auto">
+                <a
+                  href="/reportIssue"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-orange-ember hover:underline"
+                >
+                  Report Issue
+                </a>
+
+                <a
+                  href="https://buymeacoffee.com/moonandember"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="Support us on Buy Me a Coffee"
+                  className="flex-shrink-0"
+                >
+                  <img
+                    src="/donate-qr-thumb.png"
+                    alt="Buy Me a Coffee QR"
+                    style={{ width: '32px', height: '32px' }}
+                    className="rounded border border-orange-ember hover:scale-105 transition-transform"
+                  />
+                </a>
+
+                {session ? (
+                  <>
+                    <button
+                      onClick={handleSignOut}
+                      className="text-sm bg-orange-ember text-white px-3 py-1 rounded hover:bg-orange-600"
+                    >
+                      Sign Out
+                    </button>
+                    <Link href="/profile">
+                      <img
+                        src={avatarUrl || '/images/default-avatar.png'}
+                        alt="Profile"
+                        className="w-10 h-10 rounded-full border-2 border-orange-ember hover:shadow-[0_0_10px_2px_#204e39] transition-all cursor-pointer object-cover"
+                      />
+                    </Link>
+                  </>
+                ) : (
+                  <Link
+                    href="/auth"
                     className="text-sm bg-orange-ember text-white px-3 py-1 rounded hover:bg-orange-600"
                   >
-                    Sign Out
-                  </button>
-                  <Link href="/profile">
-                    <img
-                      src={avatarUrl || '/images/default-avatar.png'}
-                      alt="Profile"
-                      className="w-10 h-10 rounded-full border-2 border-orange-ember hover:shadow-[0_0_10px_2px_#204e39] transition-all cursor-pointer object-cover"
-                    />
+                    Sign In
                   </Link>
-                </div>
-              ) : (
-                <Link
-                  href="/auth"
-                  className="ml-4 text-sm bg-orange-ember text-white px-3 py-1 rounded hover:bg-orange-600"
-                >
-                  Sign In
-                </Link>
-              )}
+                )}
+              </div>
             </div>
           </nav>
         </header>

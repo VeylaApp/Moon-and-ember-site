@@ -249,7 +249,7 @@ export default function ViewEntries() {
                               onClick={() => handleImport(card)}
                               className="text-green-400 hover:underline"
                             >
-                              Import (premium)
+                              Import
                             </button>
                           )}
                         </div>
